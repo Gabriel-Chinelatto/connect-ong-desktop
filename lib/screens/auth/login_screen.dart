@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
+import '../../services/auth_service.dart';
+import '../empresa/home_empresa_screen.dart';
 import 'cadastro_tipo_screen.dart';
-import '../empresa/home_empresa_screen.dart'; // Vamos importar a home também
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,17 +12,63 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
 
+  bool _loading = false;
+
+  Future<void> fazerLogin() async {
+
+    setState(() {
+      _loading = true;
+    });
+
+    final authService = AuthService();
+
+    final sucesso = await authService.login(
+      _emailController.text,
+      _senhaController.text,
+    );
+
+    setState(() {
+      _loading = false;
+    });
+
+    if (sucesso) {
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const HomeEmpresaScreen(),
+        ),
+      );
+
+    } else {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login inválido'),
+        ),
+      );
+
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Fundo cinza claro
+      backgroundColor: Colors.grey[100],
+
       body: Center(
+
         child: Container(
-          width: 400, // Largura fixa para ficar bonito no Desktop
-          padding: const EdgeInsets.all(32.0),
+
+          width: 400,
+
+          padding: const EdgeInsets.all(32),
+
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -32,12 +80,19 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
+
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Logo ou Ícone
-              const Icon(Icons.handshake, size: 64, color: Color(0xFF2E7D32)),
+
+              const Icon(
+                Icons.handshake,
+                size: 64,
+                color: Color(0xFF2E7D32),
+              ),
+
               const SizedBox(height: 16),
+
               const Text(
                 'Connect ONG',
                 style: TextStyle(
@@ -46,9 +101,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Color(0xFF2E7D32),
                 ),
               ),
+
               const SizedBox(height: 32),
 
-              // Campo de Email
               TextField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -57,9 +112,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
+
               const SizedBox(height: 16),
 
-              // Campo de Senha
               TextField(
                 controller: _senhaController,
                 obscureText: true,
@@ -69,39 +124,49 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
+
               const SizedBox(height: 24),
 
-              // Botão Entrar
               SizedBox(
                 width: double.infinity,
                 height: 48,
+
                 child: ElevatedButton(
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () {
-                    // Redireciona para o Dashboard da Empresa para testarmos o layout
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const HomeEmpresaScreen()),
-                    );
-                  },
-                  child: const Text('Entrar', style: TextStyle(fontSize: 16)),
+
+                  onPressed: _loading ? null : fazerLogin,
+
+                  child: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'Entrar',
+                          style: TextStyle(fontSize: 16),
+                        ),
                 ),
               ),
+
               const SizedBox(height: 16),
 
-              // Texto para Cadastro
               TextButton(
+
                 onPressed: () {
+
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const CadastroTipoScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const CadastroTipoScreen(),
+                    ),
                   );
-                  // Navegar para tela de cadastro
+
                 },
-                child: const Text('Ainda não tem conta? Cadastre-se'),
+
+                child: const Text(
+                  'Ainda não tem conta? Cadastre-se',
+                ),
               ),
             ],
           ),
