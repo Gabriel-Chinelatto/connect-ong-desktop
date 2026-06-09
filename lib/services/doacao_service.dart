@@ -7,6 +7,10 @@ import 'api_service.dart';
 
 class DoacaoService {
 
+  // =========================
+  // LISTAR
+  // =========================
+
   static Future<List<DoacaoModel>> listarDoacoes() async {
 
     try {
@@ -35,6 +39,54 @@ class DoacaoService {
     } catch (e) {
 
       return [];
+
+    }
+  }
+
+  // =========================
+  // CRIAR
+  // =========================
+
+  static Future<bool> criarDoacao({
+
+    required String nome,
+    required String descricao,
+    required int quantidade,
+
+  }) async {
+
+    try {
+
+      final response = await http.post(
+
+        Uri.parse(
+          '${ApiService.baseUrl}/doacoes',
+        ),
+
+        headers: {
+          'Content-Type': 'application/json',
+        },
+
+        body: jsonEncode({
+
+          'nome': nome,
+          'descricao': descricao,
+          'quantidade': quantidade,
+
+          'categoria': 'Alimentos',
+          'tipo': 'Doação',
+          'urgente': false,
+          'novo': true,
+
+        }),
+      );
+
+      return response.statusCode == 200
+          || response.statusCode == 201;
+
+    } catch (e) {
+
+      return false;
 
     }
   }

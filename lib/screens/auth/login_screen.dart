@@ -38,20 +38,25 @@ class _LoginScreenState extends State<LoginScreen> {
     if (sucesso) {
 
       Navigator.pushReplacement(
+
         context,
+
         MaterialPageRoute(
-          builder: (_) => const HomeEmpresaScreen(),
+
+          builder: (_) => HomeEmpresaScreen(
+            emailUsuario: _emailController.text,
+          ),
         ),
       );
 
     } else {
 
       ScaffoldMessenger.of(context).showSnackBar(
+
         const SnackBar(
           content: Text('Login inválido'),
         ),
       );
-
     }
   }
 
@@ -59,6 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
 
     return Scaffold(
+
       backgroundColor: Colors.grey[100],
 
       body: Center(
@@ -70,9 +76,13 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: const EdgeInsets.all(32),
 
           decoration: BoxDecoration(
+
             color: Colors.white,
+
             borderRadius: BorderRadius.circular(12),
+
             boxShadow: const [
+
               BoxShadow(
                 color: Colors.black12,
                 blurRadius: 10,
@@ -82,7 +92,9 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
 
           child: Column(
+
             mainAxisSize: MainAxisSize.min,
+
             children: [
 
               const Icon(
@@ -94,7 +106,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
 
               const Text(
+
                 'Connect ONG',
+
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -105,7 +119,9 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 32),
 
               TextField(
+
                 controller: _emailController,
+
                 decoration: const InputDecoration(
                   labelText: 'E-mail',
                   prefixIcon: Icon(Icons.email),
@@ -116,8 +132,10 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 16),
 
               TextField(
+
                 controller: _senhaController,
                 obscureText: true,
+
                 decoration: const InputDecoration(
                   labelText: 'Senha',
                   prefixIcon: Icon(Icons.lock),
@@ -128,6 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 24),
 
               SizedBox(
+
                 width: double.infinity,
                 height: 48,
 
@@ -138,13 +157,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     foregroundColor: Colors.white,
                   ),
 
-                  onPressed: _loading ? null : fazerLogin,
+                  onPressed:
+                      _loading ? null : fazerLogin,
 
                   child: _loading
-                      ? const CircularProgressIndicator(color: Colors.white)
+
+                      ? const CircularProgressIndicator(
+                          color: Colors.white,
+                        )
+
                       : const Text(
                           'Entrar',
-                          style: TextStyle(fontSize: 16),
+                          style: TextStyle(
+                            fontSize: 16,
+                          ),
                         ),
                 ),
               ),
@@ -156,12 +182,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
 
                   Navigator.push(
+
                     context,
+
                     MaterialPageRoute(
-                      builder: (_) => const CadastroTipoScreen(),
+                      builder: (_) =>
+                          const CadastroTipoScreen(),
                     ),
                   );
-
                 },
 
                 child: const Text(

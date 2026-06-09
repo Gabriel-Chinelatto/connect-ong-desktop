@@ -2,15 +2,24 @@ import 'package:flutter/material.dart';
 
 import '../../models/doacao_model.dart';
 import '../../services/doacao_service.dart';
+import '../auth/login_screen.dart';
 
 class HomeEmpresaScreen extends StatefulWidget {
-  const HomeEmpresaScreen({super.key});
+
+  final String emailUsuario;
+
+  const HomeEmpresaScreen({
+    super.key,
+    required this.emailUsuario,
+  });
 
   @override
-  State<HomeEmpresaScreen> createState() => _HomeEmpresaScreenState();
+  State<HomeEmpresaScreen> createState() =>
+      _HomeEmpresaScreenState();
 }
 
-class _HomeEmpresaScreenState extends State<HomeEmpresaScreen> {
+class _HomeEmpresaScreenState
+    extends State<HomeEmpresaScreen> {
 
   int _selectedIndex = 0;
 
@@ -22,22 +31,12 @@ class _HomeEmpresaScreenState extends State<HomeEmpresaScreen> {
   final _descricaoController = TextEditingController();
   final _quantidadeController = TextEditingController();
 
-  bool _isEditing = false;
-
-  final _empresaNameController =
-      TextEditingController(text: "Minha Empresa S.A.");
-
-  final _emailController =
-      TextEditingController(text: "contato@minhaempresa.com.br");
-
-  final _enderecoController =
-      TextEditingController(text: "Rua das ONGs, 123 - São Paulo/SP");
-
   @override
   void initState() {
     super.initState();
 
-    _futureDoacoes = DoacaoService.listarDoacoes();
+    _futureDoacoes =
+        DoacaoService.listarDoacoes();
   }
 
   @override
@@ -64,7 +63,10 @@ class _HomeEmpresaScreenState extends State<HomeEmpresaScreen> {
               );
             }
 
-            final doacoes = snapshot.data ?? [];
+            final doacoes =
+                (snapshot.data ?? [])
+                    .reversed
+                    .toList();
 
             return Column(
 
@@ -153,9 +155,8 @@ class _HomeEmpresaScreenState extends State<HomeEmpresaScreen> {
 
                           title: Text(d.nome),
 
-                          subtitle: Text(
-                            d.descricao,
-                          ),
+                          subtitle:
+                              Text(d.descricao),
                         ),
                       );
                     },
@@ -189,7 +190,10 @@ class _HomeEmpresaScreenState extends State<HomeEmpresaScreen> {
               );
             }
 
-            final doacoes = snapshot.data ?? [];
+            final doacoes =
+                (snapshot.data ?? [])
+                    .reversed
+                    .toList();
 
             return Column(
 
@@ -258,91 +262,60 @@ class _HomeEmpresaScreenState extends State<HomeEmpresaScreen> {
 
             const SizedBox(height: 30),
 
-            _isEditing
+            ListTile(
 
-                ? TextFormField(
-                    controller:
-                        _empresaNameController,
-                    decoration:
-                        const InputDecoration(
-                      labelText:
-                          "Nome da Empresa",
-                      border:
-                          OutlineInputBorder(),
-                    ),
-                  )
+              leading: const Icon(
+                Icons.business,
+                size: 40,
+              ),
 
-                : ListTile(
-                    leading: const Icon(
-                      Icons.business,
-                      size: 40,
-                    ),
-                    title: Text(
-                      _empresaNameController.text,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight:
-                            FontWeight.bold,
-                      ),
-                    ),
-                  ),
+              title: const Text(
+                "Usuário Conectado",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              subtitle: Text(
+                widget.emailUsuario,
+              ),
+            ),
 
             const SizedBox(height: 20),
 
             Card(
+
               elevation: 2,
+
               child: Column(
                 children: [
 
-                  _isEditing
+                  ListTile(
 
-                      ? TextFormField(
-                          controller:
-                              _emailController,
-                          decoration:
-                              const InputDecoration(
-                            labelText:
-                                "E-mail",
-                            border:
-                                OutlineInputBorder(),
-                          ),
-                        )
+                    leading:
+                        const Icon(Icons.email),
 
-                      : ListTile(
-                          leading:
-                              const Icon(Icons.email),
-                          title:
-                              const Text("E-mail"),
-                          subtitle: Text(
-                            _emailController.text,
-                          ),
-                        ),
+                    title:
+                        const Text("E-mail"),
+
+                    subtitle:
+                        Text(widget.emailUsuario),
+                  ),
 
                   const Divider(),
 
-                  _isEditing
+                  const ListTile(
 
-                      ? TextFormField(
-                          controller:
-                              _enderecoController,
-                          decoration:
-                              const InputDecoration(
-                            labelText:
-                                "Endereço",
-                            border:
-                                OutlineInputBorder(),
-                          ),
-                        )
+                    leading:
+                        Icon(Icons.location_on),
 
-                      : ListTile(
-                          leading:
-                              const Icon(Icons.location_on),
-                          title:
-                              const Text("Endereço"),
-                          subtitle: Text(
-                            _enderecoController.text,
-                          ),
-                        ),
+                    title:
+                        Text("Status"),
+
+                    subtitle:
+                        Text("Conta ativa"),
+                  ),
                 ],
               ),
             ),
@@ -372,14 +345,77 @@ class _HomeEmpresaScreenState extends State<HomeEmpresaScreen> {
               });
             },
 
-            leading: const Padding(
-              padding: EdgeInsets.all(20),
-              child: CircleAvatar(
-                backgroundColor: Colors.green,
-                child: Icon(
-                  Icons.business,
-                  color: Colors.white,
-                ),
+            leading: Padding(
+
+              padding:
+                  const EdgeInsets.all(20),
+
+              child: Column(
+
+                children: [
+
+                  const CircleAvatar(
+
+                    radius: 28,
+
+                    backgroundColor:
+                        Colors.green,
+
+                    child: Icon(
+                      Icons.business,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  Text(
+
+                    widget.emailUsuario,
+
+                    textAlign: TextAlign.center,
+
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight:
+                          FontWeight.w500,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  ElevatedButton.icon(
+
+                    onPressed: () {
+
+                      Navigator.pushReplacement(
+
+                        context,
+
+                        MaterialPageRoute(
+
+                          builder: (_) =>
+                              const LoginScreen(),
+                        ),
+                      );
+                    },
+
+                    icon:
+                        const Icon(Icons.logout),
+
+                    label:
+                        const Text('Sair'),
+
+                    style:
+                        ElevatedButton.styleFrom(
+                      backgroundColor:
+                          Colors.red,
+                      foregroundColor:
+                          Colors.white,
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -413,9 +449,13 @@ class _HomeEmpresaScreenState extends State<HomeEmpresaScreen> {
           ),
 
           Expanded(
+
             child: Container(
+
               color: Colors.grey[50],
-              child: screens[_selectedIndex],
+
+              child:
+                  screens[_selectedIndex],
             ),
           ),
         ],
@@ -423,56 +463,116 @@ class _HomeEmpresaScreenState extends State<HomeEmpresaScreen> {
     );
   }
 
-  Widget _buildMetricCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+ Widget _buildMetricCard(
+  String title,
+  String value,
+  IconData icon,
+  Color color,
+) {
 
-    return Expanded(
+  return Expanded(
 
-      child: Card(
+    child: Container(
 
-        elevation: 2,
+      height: 210,
 
-        child: Padding(
+      decoration: BoxDecoration(
 
-          padding: const EdgeInsets.all(20),
+        borderRadius: BorderRadius.circular(24),
 
-          child: Column(
+        gradient: LinearGradient(
 
-            children: [
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
 
-              Icon(
+          colors: [
+
+            Colors.white,
+
+            color.withOpacity(0.08),
+          ],
+        ),
+
+        boxShadow: [
+
+          BoxShadow(
+
+            color: Colors.black.withOpacity(0.08),
+
+            blurRadius: 20,
+
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+
+      child: Padding(
+
+        padding: const EdgeInsets.all(24),
+
+        child: Column(
+
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
+
+          children: [
+
+            Container(
+
+              padding: const EdgeInsets.all(14),
+
+              decoration: BoxDecoration(
+
+                color: color.withOpacity(0.12),
+
+                borderRadius:
+                    BorderRadius.circular(16),
+              ),
+
+              child: Icon(
                 icon,
-                size: 40,
+                size: 34,
                 color: color,
               ),
+            ),
 
-              const SizedBox(height: 10),
+            const Spacer(),
 
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+            Text(
+
+              title,
+
+              style: TextStyle(
+
+                fontSize: 15,
+
+                color: Colors.grey[700],
+
+                fontWeight: FontWeight.w500,
               ),
+            ),
 
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+            const SizedBox(height: 8),
+
+            Text(
+
+              value,
+
+              style: const TextStyle(
+
+                fontSize: 30,
+
+                fontWeight: FontWeight.bold,
+
+                letterSpacing: -1,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildFormularioDoacao() {
 
@@ -497,7 +597,8 @@ class _HomeEmpresaScreenState extends State<HomeEmpresaScreen> {
                 "Nova Doação",
                 style: TextStyle(
                   fontSize: 32,
-                  fontWeight: FontWeight.bold,
+                  fontWeight:
+                      FontWeight.bold,
                   color: Colors.green,
                 ),
               ),
@@ -505,31 +606,147 @@ class _HomeEmpresaScreenState extends State<HomeEmpresaScreen> {
               const SizedBox(height: 40),
 
               TextFormField(
-                controller: _tituloController,
-                decoration: const InputDecoration(
+                controller:
+                    _tituloController,
+
+                decoration:
+                    const InputDecoration(
                   labelText: "Título",
-                  border: OutlineInputBorder(),
+                  border:
+                      OutlineInputBorder(),
                 ),
               ),
 
               const SizedBox(height: 20),
 
               TextFormField(
-                controller: _descricaoController,
+                controller:
+                    _descricaoController,
+
                 maxLines: 3,
-                decoration: const InputDecoration(
+
+                decoration:
+                    const InputDecoration(
                   labelText: "Descrição",
-                  border: OutlineInputBorder(),
+                  border:
+                      OutlineInputBorder(),
                 ),
               ),
 
               const SizedBox(height: 20),
 
               TextFormField(
-                controller: _quantidadeController,
-                decoration: const InputDecoration(
+                controller:
+                    _quantidadeController,
+
+                decoration:
+                    const InputDecoration(
                   labelText: "Quantidade",
-                  border: OutlineInputBorder(),
+                  border:
+                      OutlineInputBorder(),
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              SizedBox(
+
+                width: 250,
+                height: 50,
+
+                child: ElevatedButton(
+
+                  onPressed: () async {
+
+                    final sucesso =
+                        await DoacaoService
+                            .criarDoacao(
+
+                      nome:
+                          _tituloController
+                              .text,
+
+                      descricao:
+                          _descricaoController
+                              .text,
+
+                      quantidade:
+                          int.tryParse(
+                                _quantidadeController
+                                    .text,
+                              ) ??
+                              0,
+                    );
+
+                    if (sucesso) {
+
+                      ScaffoldMessenger.of(
+                              context)
+                          .showSnackBar(
+
+                        const SnackBar(
+
+                          content: Text(
+                            'Doação cadastrada com sucesso!',
+                          ),
+                        ),
+                      );
+
+                      _tituloController
+                          .clear();
+
+                      _descricaoController
+                          .clear();
+
+                      _quantidadeController
+                          .clear();
+
+                      setState(() {
+
+                        _futureDoacoes =
+                            Future.delayed(
+
+                          const Duration(
+                              milliseconds:
+                                  200),
+
+                          () =>
+                              DoacaoService
+                                  .listarDoacoes(),
+                        );
+                      });
+
+                      await Future.delayed(
+                        const Duration(
+                            milliseconds:
+                                300),
+                      );
+
+                      setState(() {
+
+                        _selectedIndex = 0;
+
+                      });
+
+                    } else {
+
+                      ScaffoldMessenger.of(
+                              context)
+                          .showSnackBar(
+
+                        const SnackBar(
+
+                          content: Text(
+                            'Erro ao cadastrar doação',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+
+                  child: const Text(
+                    'Cadastrar Doação',
+                  ),
                 ),
               ),
             ],
