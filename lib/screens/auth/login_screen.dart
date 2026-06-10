@@ -97,11 +97,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
             children: [
 
-              const Icon(
-                Icons.handshake,
-                size: 64,
-                color: Color(0xFF2E7D32),
-              ),
+              Image.asset(
+
+  'assets/images/logo.jpg',
+
+  height: 120,
+),
 
               const SizedBox(height: 16),
 

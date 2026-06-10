@@ -56,12 +56,73 @@ class _HomeEmpresaScreenState
           builder: (context, snapshot) {
 
             if (snapshot.connectionState ==
-                ConnectionState.waiting) {
+    ConnectionState.waiting) {
 
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
+  return Center(
+
+    child: Column(
+
+      mainAxisAlignment:
+          MainAxisAlignment.center,
+
+      children: [
+
+        Container(
+
+          width: 70,
+          height: 70,
+
+          decoration: BoxDecoration(
+
+            color:
+                Colors.green.withValues(
+              alpha: 0.08,
+            ),
+
+            borderRadius:
+                BorderRadius.circular(20),
+          ),
+
+          child: const Padding(
+
+            padding: EdgeInsets.all(18),
+
+            child:
+                CircularProgressIndicator(
+              strokeWidth: 4,
+              color: Colors.green,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        const Text(
+
+          'Carregando dashboard...',
+
+          style: TextStyle(
+
+            fontSize: 18,
+
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        Text(
+
+          'Buscando informações do sistema',
+
+          style: TextStyle(
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
             final doacoes =
                 (snapshot.data ?? [])
@@ -354,19 +415,46 @@ class _HomeEmpresaScreenState
 
                 children: [
 
-                  const CircleAvatar(
+                  Container(
 
-                    radius: 28,
+  width: 90,
+  height: 90,
 
-                    backgroundColor:
-                        Colors.green,
+  decoration: BoxDecoration(
 
-                    child: Icon(
-                      Icons.business,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
+    shape: BoxShape.circle,
+
+    color: Colors.white,
+
+    boxShadow: [
+
+      BoxShadow(
+
+        color:
+            Colors.black.withValues(
+          alpha: 0.08,
+        ),
+
+        blurRadius: 10,
+      ),
+    ],
+  ),
+
+  child: Padding(
+
+    padding: const EdgeInsets.all(12),
+
+    child: ClipOval(
+
+      child: Image.asset(
+
+        'assets/images/logo.jpg',
+
+        fit: BoxFit.cover,
+      ),
+    ),
+  ),
+),
 
                   const SizedBox(height: 12),
 
@@ -658,91 +746,164 @@ class _HomeEmpresaScreenState
 
                   onPressed: () async {
 
-                    final sucesso =
-                        await DoacaoService
-                            .criarDoacao(
+  showDialog(
 
-                      nome:
-                          _tituloController
-                              .text,
+    context: context,
 
-                      descricao:
-                          _descricaoController
-                              .text,
+    barrierDismissible: false,
 
-                      quantidade:
-                          int.tryParse(
-                                _quantidadeController
-                                    .text,
-                              ) ??
-                              0,
-                    );
+    builder: (_) => const Center(
 
-                    if (sucesso) {
+      child: CircularProgressIndicator(),
+    ),
+  );
 
-                      ScaffoldMessenger.of(
-                              context)
-                          .showSnackBar(
+  final sucesso =
+      await DoacaoService.criarDoacao(
 
-                        const SnackBar(
+    nome: _tituloController.text,
 
-                          content: Text(
-                            'Doação cadastrada com sucesso!',
-                          ),
-                        ),
-                      );
+    descricao:
+        _descricaoController.text,
 
-                      _tituloController
-                          .clear();
+    quantidade: int.tryParse(
+          _quantidadeController.text,
+        ) ??
+        0,
+  );
 
-                      _descricaoController
-                          .clear();
+  if (mounted) {
+    Navigator.pop(context);
+  }
 
-                      _quantidadeController
-                          .clear();
+  if (sucesso) {
 
-                      setState(() {
+    showDialog(
 
-                        _futureDoacoes =
-                            Future.delayed(
+      context: context,
 
-                          const Duration(
-                              milliseconds:
-                                  200),
+      builder: (_) => AlertDialog(
 
-                          () =>
-                              DoacaoService
-                                  .listarDoacoes(),
-                        );
-                      });
+        shape: RoundedRectangleBorder(
 
-                      await Future.delayed(
-                        const Duration(
-                            milliseconds:
-                                300),
-                      );
+          borderRadius:
+              BorderRadius.circular(20),
+        ),
 
-                      setState(() {
+        title: const Row(
 
-                        _selectedIndex = 0;
+          children: [
 
-                      });
+            Icon(
+              Icons.check_circle,
+              color: Colors.green,
+            ),
 
-                    } else {
+            SizedBox(width: 10),
 
-                      ScaffoldMessenger.of(
-                              context)
-                          .showSnackBar(
+            Text('Sucesso'),
+          ],
+        ),
 
-                        const SnackBar(
+        content: const Text(
+          'Doação cadastrada com sucesso!',
+        ),
 
-                          content: Text(
-                            'Erro ao cadastrar doação',
-                          ),
-                        ),
-                      );
-                    }
-                  },
+        actions: [
+
+          TextButton(
+
+            onPressed: () {
+
+              Navigator.pop(context);
+            },
+
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+
+    _tituloController.clear();
+
+    _descricaoController.clear();
+
+    _quantidadeController.clear();
+
+    setState(() {
+
+      _futureDoacoes =
+          Future.delayed(
+
+        const Duration(
+            milliseconds: 200),
+
+        () => DoacaoService
+            .listarDoacoes(),
+      );
+    });
+
+    await Future.delayed(
+      const Duration(milliseconds: 300),
+    );
+
+    if (mounted) {
+
+      setState(() {
+
+        _selectedIndex = 0;
+      });
+    }
+
+  } else {
+
+    showDialog(
+
+      context: context,
+
+      builder: (_) => AlertDialog(
+
+        shape: RoundedRectangleBorder(
+
+          borderRadius:
+              BorderRadius.circular(20),
+        ),
+
+        title: const Row(
+
+          children: [
+
+            Icon(
+              Icons.error,
+              color: Colors.red,
+            ),
+
+            SizedBox(width: 10),
+
+            Text('Erro'),
+          ],
+        ),
+
+        content: const Text(
+          'Erro ao cadastrar doação',
+        ),
+
+        actions: [
+
+          TextButton(
+
+            onPressed: () {
+
+              Navigator.pop(context);
+            },
+
+            child: const Text('Fechar'),
+          ),
+        ],
+      ),
+    );
+  }
+},
 
                   child: const Text(
                     'Cadastrar Doação',
