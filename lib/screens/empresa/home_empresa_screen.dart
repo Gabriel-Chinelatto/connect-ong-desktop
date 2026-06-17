@@ -44,92 +44,98 @@ class _HomeEmpresaScreenState
 
     final List<Widget> screens = [
 
-      // DASHBOARD
-      Padding(
+  // DASHBOARD
+  Padding(
 
-        padding: const EdgeInsets.all(32),
+    padding: const EdgeInsets.all(32),
 
-        child: FutureBuilder<List<DoacaoModel>>(
+    child: FutureBuilder<List<DoacaoModel>>(
 
-          future: _futureDoacoes,
+      future: _futureDoacoes,
 
-          builder: (context, snapshot) {
+      builder: (context, snapshot) {
 
-            if (snapshot.connectionState ==
-    ConnectionState.waiting) {
+        if (snapshot.connectionState ==
+            ConnectionState.waiting) {
 
-  return Center(
+          return Center(
 
-    child: Column(
+            child: Column(
 
-      mainAxisAlignment:
-          MainAxisAlignment.center,
+              mainAxisAlignment:
+                  MainAxisAlignment.center,
 
-      children: [
+              children: [
 
-        Container(
+                Container(
 
-          width: 70,
-          height: 70,
+                  width: 70,
+                  height: 70,
 
-          decoration: BoxDecoration(
+                  decoration: BoxDecoration(
 
-            color:
-                Colors.green.withValues(
-              alpha: 0.08,
+                    color: Colors.green.withValues(
+                      alpha: 0.08,
+                    ),
+
+                    borderRadius:
+                        BorderRadius.circular(20),
+                  ),
+
+                  child: const Padding(
+
+                    padding: EdgeInsets.all(18),
+
+                    child:
+                        CircularProgressIndicator(
+                      strokeWidth: 4,
+                      color: Colors.green,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                const Text(
+
+                  'Carregando dashboard...',
+
+                  style: TextStyle(
+
+                    fontSize: 18,
+
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                Text(
+
+                  'Buscando informações do sistema',
+
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
             ),
+          );
+        }
 
-            borderRadius:
-                BorderRadius.circular(20),
-          ),
+        final doacoes =
+            (snapshot.data ?? [])
+                .reversed
+                .toList();
 
-          child: const Padding(
+        return Column(
 
-            padding: EdgeInsets.all(18),
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
 
-            child:
-                CircularProgressIndicator(
-              strokeWidth: 4,
-              color: Colors.green,
-            ),
-          ),
-        ),
+          children: [
 
-        const SizedBox(height: 24),
-
-        const Text(
-
-          'Carregando dashboard...',
-
-          style: TextStyle(
-
-            fontSize: 18,
-
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-
-        const SizedBox(height: 8),
-
-        Text(
-
-          'Buscando informações do sistema',
-
-          style: TextStyle(
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-            final doacoes =
-                (snapshot.data ?? [])
-                    .reversed
-                    .toList();
-
-            return Column(
+            Column(
 
               crossAxisAlignment:
                   CrossAxisAlignment.start,
@@ -137,253 +143,483 @@ class _HomeEmpresaScreenState
               children: [
 
                 const Text(
-                  "Bem-vindo de volta!",
+
+                  'Dashboard',
+
                   style: TextStyle(
-                    fontSize: 28,
+
+                    fontSize: 34,
+
                     fontWeight: FontWeight.bold,
+
+                    color: Color(0xFF1E293B),
                   ),
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 8),
 
-                Row(
-                  children: [
+                Text(
 
-                    _buildMetricCard(
-                      "Total Doado",
-                      "${doacoes.length}",
-                      Icons.favorite,
-                      Colors.blue,
-                    ),
+                  'Acompanhe suas doações e impacto social.',
 
-                    const SizedBox(width: 20),
-
-                    _buildMetricCard(
-                      "Em Aberto",
-                      "2",
-                      Icons.pending_actions,
-                      Colors.orange,
-                    ),
-
-                    const SizedBox(width: 20),
-
-                    _buildMetricCard(
-                      "Impacto",
-                      "500kg",
-                      Icons.eco,
-                      Colors.green,
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 40),
-
-                const Text(
-                  "Últimas Doações",
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
 
-                const SizedBox(height: 20),
+                    fontSize: 16,
 
-                Expanded(
-
-                  child: ListView.builder(
-
-                    itemCount: doacoes.length > 3
-                        ? 3
-                        : doacoes.length,
-
-                    itemBuilder: (context, index) {
-
-                      final d = doacoes[index];
-
-                      return Card(
-
-                        margin:
-                            const EdgeInsets.only(
-                          bottom: 10,
-                        ),
-
-                        child: ListTile(
-
-                          leading: const Icon(
-                            Icons.history,
-                            color: Colors.green,
-                          ),
-
-                          title: Text(d.nome),
-
-                          subtitle:
-                              Text(d.descricao),
-                        ),
-                      );
-                    },
+                    color: Colors.grey.shade600,
                   ),
                 ),
               ],
-            );
-          },
-        ),
-      ),
-
-      // DOAR
-      _buildFormularioDoacao(),
-
-      // HISTÓRICO
-      Padding(
-
-        padding: const EdgeInsets.all(20),
-
-        child: FutureBuilder<List<DoacaoModel>>(
-
-          future: _futureDoacoes,
-
-          builder: (context, snapshot) {
-
-            if (snapshot.connectionState ==
-                ConnectionState.waiting) {
-
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
-
-            final doacoes =
-                (snapshot.data ?? [])
-                    .reversed
-                    .toList();
-
-            return Column(
-
-              children: [
-
-                const Text(
-                  "Histórico",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                Expanded(
-
-                  child: ListView.builder(
-
-                    itemCount: doacoes.length,
-
-                    itemBuilder: (context, index) {
-
-                      final d = doacoes[index];
-
-                      return Card(
-
-                        child: ListTile(
-
-                          title: Text(d.nome),
-
-                          subtitle: Text(
-                            "Qtd: ${d.quantidade}",
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-
-      // PERFIL
-      Padding(
-
-        padding: const EdgeInsets.all(40),
-
-        child: Column(
-
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-
-          children: [
-
-            const Text(
-              "Meu Perfil",
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.green,
-              ),
             ),
 
             const SizedBox(height: 30),
 
-            ListTile(
+            Row(
 
-              leading: const Icon(
-                Icons.business,
-                size: 40,
-              ),
+              children: [
 
-              title: const Text(
-                "Usuário Conectado",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                _buildMetricCard(
+                  "Total Doado",
+                  "${doacoes.length}",
+                  Icons.favorite,
+                  Colors.blue,
                 ),
-              ),
 
-              subtitle: Text(
-                widget.emailUsuario,
+                const SizedBox(width: 20),
+
+                _buildMetricCard(
+                  "Em Aberto",
+                  "2",
+                  Icons.pending_actions,
+                  Colors.orange,
+                ),
+
+                const SizedBox(width: 20),
+
+                _buildMetricCard(
+                  "Impacto",
+                  "500kg",
+                  Icons.eco,
+                  Colors.green,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 40),
+
+            const Text(
+
+              "Últimas Doações",
+
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
             ),
 
             const SizedBox(height: 20),
 
-            Card(
+            Expanded(
 
-              elevation: 2,
+              child: ListView.builder(
 
-              child: Column(
-                children: [
+                itemCount: doacoes.length > 3
+                    ? 3
+                    : doacoes.length,
 
-                  ListTile(
+                itemBuilder: (context, index) {
 
-                    leading:
-                        const Icon(Icons.email),
+                  final d = doacoes[index];
 
-                    title:
-                        const Text("E-mail"),
+                  return Card(
 
-                    subtitle:
-                        Text(widget.emailUsuario),
-                  ),
+                    margin:
+                        const EdgeInsets.only(
+                      bottom: 12,
+                    ),
 
-                  const Divider(),
+                    child: ListTile(
 
-                  const ListTile(
+                      contentPadding:
+                          const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
 
-                    leading:
-                        Icon(Icons.location_on),
+                      leading: Container(
 
-                    title:
-                        Text("Status"),
+                        padding:
+                            const EdgeInsets.all(12),
 
-                    subtitle:
-                        Text("Conta ativa"),
-                  ),
-                ],
+                        decoration: BoxDecoration(
+
+                          color: Colors.green
+                              .withValues(
+                            alpha: 0.10,
+                          ),
+
+                          borderRadius:
+                              BorderRadius.circular(
+                            14,
+                          ),
+                        ),
+
+                        child: const Icon(
+
+                          Icons.volunteer_activism,
+
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+
+                      title: Text(
+
+                        d.nome,
+
+                        style: const TextStyle(
+                          fontWeight:
+                              FontWeight.w600,
+                        ),
+                      ),
+
+                      subtitle: Padding(
+
+                        padding:
+                            const EdgeInsets.only(
+                          top: 4,
+                        ),
+
+                        child: Text(
+                          d.descricao,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ],
+        );
+      },
+    ),
+  ),
+
+  // DOAR
+  _buildFormularioDoacao(),
+
+  // HISTÓRICO
+  Padding(
+
+  padding: const EdgeInsets.all(32),
+
+  child: FutureBuilder<List<DoacaoModel>>(
+
+    future: _futureDoacoes,
+
+    builder: (context, snapshot) {
+
+      if (snapshot.connectionState ==
+          ConnectionState.waiting) {
+
+        return const Center(
+          child: CircularProgressIndicator(),
+        );
+      }
+
+      final doacoes =
+          (snapshot.data ?? [])
+              .reversed
+              .toList();
+
+      return Column(
+
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+
+        children: [
+
+          const Text(
+
+            "Histórico de Doações",
+
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          Text(
+
+            "Acompanhe todas as doações realizadas pela sua empresa.",
+
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey.shade600,
+            ),
+          ),
+
+          const SizedBox(height: 32),
+
+          Expanded(
+
+            child: ListView.builder(
+
+              padding: const EdgeInsets.only(
+                top: 8,
+              ),
+
+              itemCount: doacoes.length,
+
+              itemBuilder: (context, index) {
+
+                final d = doacoes[index];
+
+                return Container(
+
+                  margin: const EdgeInsets.only(
+                    bottom: 18,
+                  ),
+
+                  decoration: BoxDecoration(
+
+                    color: Colors.white,
+
+                    borderRadius:
+                        BorderRadius.circular(20),
+
+                    boxShadow: [
+
+                      BoxShadow(
+
+                        color: Colors.black.withValues(
+                          alpha: 0.04,
+                        ),
+
+                        blurRadius: 24,
+
+                        offset: const Offset(
+                          0,
+                          10,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  child: ListTile(
+
+                    contentPadding:
+                        const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 18,
+                    ),
+
+                    leading: Container(
+
+                      width: 64,
+                      height: 64,
+
+                      decoration: BoxDecoration(
+
+                        color: const Color(
+                          0xFFE8F5E9,
+                        ),
+
+                        borderRadius:
+                            BorderRadius.circular(
+                          16,
+                        ),
+                      ),
+
+                      child: const Icon(
+
+                        Icons.volunteer_activism,
+
+                        color: Color(0xFF2E7D32),
+
+                        size: 32,
+                      ),
+                    ),
+
+                    title: Text(
+
+                      d.nome,
+
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight:
+                            FontWeight.w600,
+                      ),
+                    ),
+
+                    subtitle: Padding(
+
+                      padding:
+                          const EdgeInsets.only(
+                        top: 8,
+                      ),
+
+                      child: Row(
+
+                        children: [
+
+                          Icon(
+
+                            Icons.inventory_2_outlined,
+
+                            size: 18,
+
+                            color: Colors.grey.shade600,
+                          ),
+
+                          const SizedBox(width: 8),
+
+                          Text(
+
+                            "Quantidade: ${d.quantidade}",
+
+                            style: TextStyle(
+                              color:
+                                  Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    trailing: Container(
+
+                      padding:
+                          const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+
+                      decoration: BoxDecoration(
+
+                        color: const Color(
+                          0xFFE8F5E9,
+                        ),
+
+                        borderRadius:
+                            BorderRadius.circular(
+                          30,
+                        ),
+                      ),
+
+                      child: const Text(
+
+                        "Concluída",
+
+                        style: TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontWeight:
+                              FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    },
+  ),
+),
+
+  // PERFIL
+  Padding(
+
+    padding: const EdgeInsets.all(40),
+
+    child: Column(
+
+      crossAxisAlignment:
+          CrossAxisAlignment.start,
+
+      children: [
+
+        const Text(
+
+          "Meu Perfil",
+
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Colors.green,
+          ),
         ),
-      ),
-    ];
+
+        const SizedBox(height: 30),
+
+        ListTile(
+
+          leading: const Icon(
+            Icons.business,
+            size: 40,
+          ),
+
+          title: const Text(
+
+            "Usuário Conectado",
+
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          subtitle: Text(
+            widget.emailUsuario,
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        Card(
+
+          elevation: 2,
+
+          child: Column(
+
+            children: [
+
+              ListTile(
+
+                leading:
+                    const Icon(Icons.email),
+
+                title:
+                    const Text("E-mail"),
+
+                subtitle:
+                    Text(widget.emailUsuario),
+              ),
+
+              const Divider(),
+
+              const ListTile(
+
+                leading:
+                    Icon(Icons.location_on),
+
+                title:
+                    Text("Status"),
+
+                subtitle:
+                    Text("Conta ativa"),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  ),
+];
 
     return Scaffold(
 
@@ -393,143 +629,167 @@ class _HomeEmpresaScreenState
 
           NavigationRail(
 
-            selectedIndex: _selectedIndex,
+  backgroundColor: Colors.white,
 
-            extended: true,
+  extended: true,
 
-            onDestinationSelected:
-                (int index) {
+  minExtendedWidth: 240,
 
-              setState(() {
+  selectedIndex: _selectedIndex,
 
-                _selectedIndex = index;
-              });
-            },
+  useIndicator: true,
 
-            leading: Padding(
+  indicatorColor: const Color(0xFFE8F5E9),
 
-              padding:
-                  const EdgeInsets.all(20),
-
-              child: Column(
-
-                children: [
-
-                  Container(
-
-  width: 90,
-  height: 90,
-
-  decoration: BoxDecoration(
-
-    shape: BoxShape.circle,
-
-    color: Colors.white,
-
-    boxShadow: [
-
-      BoxShadow(
-
-        color:
-            Colors.black.withValues(
-          alpha: 0.08,
-        ),
-
-        blurRadius: 10,
-      ),
-    ],
+  selectedIconTheme: const IconThemeData(
+    color: Color(0xFF2E7D32),
+    size: 26,
   ),
 
-  child: Padding(
-
-    padding: const EdgeInsets.all(12),
-
-    child: ClipOval(
-
-      child: Image.asset(
-
-        'assets/images/logo.jpg',
-
-        fit: BoxFit.cover,
-      ),
-    ),
+  unselectedIconTheme: IconThemeData(
+    color: Colors.grey.shade600,
+    size: 24,
   ),
-),
 
-                  const SizedBox(height: 12),
+  selectedLabelTextStyle: const TextStyle(
+    color: Color(0xFF2E7D32),
+    fontWeight: FontWeight.w600,
+  ),
 
-                  Text(
+  unselectedLabelTextStyle: TextStyle(
+    color: Colors.grey.shade700,
+  ),
 
-                    widget.emailUsuario,
+  onDestinationSelected: (index) {
 
-                    textAlign: TextAlign.center,
+    setState(() {
 
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight:
-                          FontWeight.w500,
-                    ),
-                  ),
+      _selectedIndex = index;
+    });
+  },
 
-                  const SizedBox(height: 20),
+  leading: Padding(
 
-                  ElevatedButton.icon(
+    padding: const EdgeInsets.all(24),
 
-                    onPressed: () {
+    child: Column(
 
-                      Navigator.pushReplacement(
+      children: [
 
-                        context,
+        Container(
 
-                        MaterialPageRoute(
+          width: 110,
+          height: 110,
 
-                          builder: (_) =>
-                              const LoginScreen(),
-                        ),
-                      );
-                    },
+          decoration: BoxDecoration(
 
-                    icon:
-                        const Icon(Icons.logout),
+            shape: BoxShape.circle,
 
-                    label:
-                        const Text('Sair'),
+            color: Colors.white,
 
-                    style:
-                        ElevatedButton.styleFrom(
-                      backgroundColor:
-                          Colors.red,
-                      foregroundColor:
-                          Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            boxShadow: [
 
-            destinations: const [
+              BoxShadow(
 
-              NavigationRailDestination(
-                icon: Icon(Icons.dashboard),
-                label: Text('Início'),
-              ),
+                color: Colors.black.withValues(
+                  alpha: 0.08,
+                ),
 
-              NavigationRailDestination(
-                icon: Icon(Icons.add_circle),
-                label: Text('Doar'),
-              ),
-
-              NavigationRailDestination(
-                icon: Icon(Icons.history),
-                label: Text('Histórico'),
-              ),
-
-              NavigationRailDestination(
-                icon: Icon(Icons.person_outline),
-                label: Text('Perfil'),
+                blurRadius: 24,
               ),
             ],
           ),
+
+          child: Padding(
+
+            padding: const EdgeInsets.all(12),
+
+            child: ClipOval(
+
+              child: Image.asset(
+                'assets/images/logo.jpg',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        Text(
+
+          widget.emailUsuario,
+
+          textAlign: TextAlign.center,
+
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey.shade700,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        ElevatedButton.icon(
+
+          onPressed: () {
+
+            Navigator.pushReplacement(
+
+              context,
+
+              MaterialPageRoute(
+
+                builder: (_) => const LoginScreen(),
+              ),
+            );
+          },
+
+          icon: const Icon(Icons.logout),
+
+          label: const Text('Sair'),
+
+          style: ElevatedButton.styleFrom(
+
+            backgroundColor: const Color(0xFFFFF1F2),
+
+            foregroundColor: Colors.red.shade700,
+
+            elevation: 0,
+          ),
+        ),
+      ],
+    ),
+  ),
+
+  destinations: const [
+
+    NavigationRailDestination(
+      icon: Icon(Icons.dashboard_outlined),
+      selectedIcon: Icon(Icons.dashboard),
+      label: Text('Início'),
+    ),
+
+    NavigationRailDestination(
+      icon: Icon(Icons.favorite_border),
+      selectedIcon: Icon(Icons.favorite),
+      label: Text('Doar'),
+    ),
+
+    NavigationRailDestination(
+      icon: Icon(Icons.history_outlined),
+      selectedIcon: Icon(Icons.history),
+      label: Text('Histórico'),
+    ),
+
+    NavigationRailDestination(
+      icon: Icon(Icons.person_outline),
+      selectedIcon: Icon(Icons.person),
+      label: Text('Perfil'),
+    ),
+  ],
+),
 
           const VerticalDivider(
             thickness: 1,
@@ -540,7 +800,7 @@ class _HomeEmpresaScreenState
 
             child: Container(
 
-              color: Colors.grey[50],
+              color: const Color(0xFFF8FAFC),
 
               child:
                   screens[_selectedIndex],
@@ -562,7 +822,7 @@ class _HomeEmpresaScreenState
 
     child: Container(
 
-      height: 210,
+      height: 220,
 
       decoration: BoxDecoration(
 
@@ -577,20 +837,22 @@ class _HomeEmpresaScreenState
 
             Colors.white,
 
-            color.withOpacity(0.08),
+            color.withValues(alpha: 0.08)
           ],
         ),
 
         boxShadow: [
 
-          BoxShadow(
+         BoxShadow(
 
-            color: Colors.black.withOpacity(0.08),
+          color: Colors.black.withValues(alpha: 0.08),
 
-            blurRadius: 20,
+          blurRadius: 30,
+
+            spreadRadius: -10,
 
             offset: const Offset(0, 8),
-          ),
+            ),
         ],
       ),
 
@@ -599,9 +861,10 @@ class _HomeEmpresaScreenState
         padding: const EdgeInsets.all(24),
 
         child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
+           crossAxisAlignment: CrossAxisAlignment.start,
+
 
           children: [
 
@@ -611,11 +874,10 @@ class _HomeEmpresaScreenState
 
               decoration: BoxDecoration(
 
-                color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
 
-                borderRadius:
-                    BorderRadius.circular(16),
-              ),
+              borderRadius: BorderRadius.circular(16),
+                ),
 
               child: Icon(
                 icon,
@@ -648,7 +910,7 @@ class _HomeEmpresaScreenState
 
               style: const TextStyle(
 
-                fontSize: 30,
+                fontSize: 32,
 
                 fontWeight: FontWeight.bold,
 
