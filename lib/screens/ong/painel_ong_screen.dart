@@ -7,6 +7,7 @@ import '../../services/ong_service.dart';
 import '../../services/necessidade_service.dart';
 import '../../services/interesse_service.dart';
 import '../auth/login_screen.dart';
+import 'chat_ong_screen.dart';
 
 const Color _verde = Color(0xFF2E7D32);
 
@@ -342,6 +343,24 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                     onPressed: () => _aceitar(it),
                     icon: const Icon(Icons.check),
                     label: const Text('Aceitar'),
+                  ),
+                ] else if (it.status == 'ACEITO') ...[
+                  _statusBadge(it.status),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatOngScreen(
+                            interesseId: it.id,
+                            titulo: it.doadorNome ?? 'Doador',
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.chat),
+                    label: const Text('Conversar'),
                   ),
                 ] else
                   _statusBadge(it.status),
