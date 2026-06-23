@@ -240,12 +240,83 @@ class _PainelConteudoState extends State<_PainelConteudo> {
         ),
         body: _carregando
             ? const Center(child: CircularProgressIndicator())
-            : TabBarView(
+            : Column(
                 children: [
-                  _abaNecessidades(),
-                  _abaInteresses(),
+                  _statsHeader(),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _abaNecessidades(),
+                        _abaInteresses(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
+      ),
+    );
+  }
+
+  // ---- Resumo em numeros (dashboard da ONG) ----
+  Widget _statsHeader() {
+    final matches =
+        _interesses.where((i) => i.status == 'ACEITO').length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+      child: Row(
+        children: [
+          _statMini(Icons.campaign, '${_necessidades.length}',
+              'Necessidades', _verde),
+          const SizedBox(width: 14),
+          _statMini(Icons.people, '${_interesses.length}', 'Interesses',
+              Colors.blue.shade400),
+          const SizedBox(width: 14),
+          _statMini(Icons.handshake, '$matches', 'Matches fechados',
+              Colors.pink.shade400),
+        ],
+      ),
+    );
+  }
+
+  Widget _statMini(IconData icone, String numero, String rotulo, Color cor) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: cor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icone, color: cor),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(numero,
+                    style: const TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.bold)),
+                Text(rotulo,
+                    style: TextStyle(
+                        color: Colors.grey.shade600, fontSize: 12)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
