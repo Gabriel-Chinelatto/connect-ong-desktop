@@ -1,0 +1,490 @@
+import 'package:flutter/material.dart';
+
+import '../../models/ong.dart';
+import '../../models/necessidade.dart';
+import '../../models/interesse.dart';
+import '../../services/ong_service.dart';
+import '../../services/necessidade_service.dart';
+import '../../services/interesse_service.dart';
+import '../auth/login_screen.dart';
+
+const Color _verde = Color(0xFF2E7D32);
+
+/// Painel administrativo da ONG (desktop).
+/// Resolve qual ONG o usuario gerencia (pelo email, com seletor de fallback)
+/// e mostra o painel com necessidades publicadas e interesses recebidos.
+class PainelOngScreen extends StatefulWidget {
+  final String emailUsuario;
+
+  const PainelOngScreen({super.key, required this.emailUsuario});
+
+  @override
+  State<PainelOngScreen> createState() => _PainelOngScreenState();
+}
+
+class _PainelOngScreenState extends State<PainelOngScreen> {
+  final OngService _ongService = OngService();
+
+  Ong? _ong;
+  List<Ong> _todasOngs = [];
+  bool _carregando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolverOng();
+  }
+
+  Future<void> _resolverOng() async {
+    setState(() => _carregando = true);
+    try {
+      final encontrada =
+          await _ongService.buscarPorEmail(widget.emailUsuario);
+      if (!mounted) return;
+      if (encontrada != null) {
+        setState(() {
+          _ong = encontrada;
+          _carregando = false;
+        });
+      } else {
+        final todas = await _ongService.listarTodas();
+        if (!mounted) return;
+        setState(() {
+          _todasOngs = todas;
+          _carregando = false;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _carregando = false);
+    }
+  }
+
+  void _logout() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_carregando) {
+      return const Scaffold(
+          body: Center(child: CircularProgressIndicator()));
+    }
+    if (_ong == null) {
+      return _buildSeletor();
+    }
+    return _PainelConteudo(ong: _ong!, onLogout: _logout);
+  }
+
+  // Mostrado quando o email do login nao corresponde a nenhuma ONG.
+  Widget _buildSeletor() {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Selecione sua ONG')),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Não encontramos uma ONG com o seu email. '
+                  'Selecione qual ONG você gerencia:',
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 20),
+                if (_todasOngs.isEmpty)
+                  const Text('Nenhuma ONG cadastrada ainda.')
+                else
+                  ..._todasOngs.map(
+                    (o) => Card(
+                      child: ListTile(
+                        leading:
+                            const Icon(Icons.handshake, color: _verde),
+                        title: Text(o.nome),
+                        subtitle: Text(o.cidade),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => setState(() => _ong = o),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// CONTEUDO DO PAINEL (com as duas abas)
+// ===========================================================================
+class _PainelConteudo extends StatefulWidget {
+  final Ong ong;
+  final VoidCallback onLogout;
+
+  const _PainelConteudo({required this.ong, required this.onLogout});
+
+  @override
+  State<_PainelConteudo> createState() => _PainelConteudoState();
+}
+
+class _PainelConteudoState extends State<_PainelConteudo> {
+  final NecessidadeService _necessidadeService = NecessidadeService();
+  final InteresseService _interesseService = InteresseService();
+
+  List<Necessidade> _necessidades = [];
+  List<Interesse> _interesses = [];
+  bool _carregando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarTudo();
+  }
+
+  Future<void> _carregarTudo() async {
+    setState(() => _carregando = true);
+    try {
+      final nec = await _necessidadeService.listarPorOng(widget.ong.id);
+      final ints = await _interesseService.listarPorOng(widget.ong.id);
+      if (!mounted) return;
+      setState(() {
+        _necessidades = nec;
+        _interesses = ints;
+        _carregando = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _carregando = false);
+      _snack('Erro ao carregar dados do painel', Colors.red);
+    }
+  }
+
+  void _snack(String msg, Color cor) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: cor,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _aceitar(Interesse i) async {
+    try {
+      await _interesseService.aceitar(i.id);
+      _snack('Interesse aceito! Match criado. 💚', _verde);
+      _carregarTudo();
+    } catch (e) {
+      _snack('Erro ao aceitar', Colors.red);
+    }
+  }
+
+  Future<void> _recusar(Interesse i) async {
+    try {
+      await _interesseService.recusar(i.id);
+      _snack('Interesse recusado.', Colors.orange.shade700);
+      _carregarTudo();
+    } catch (e) {
+      _snack('Erro ao recusar', Colors.red);
+    }
+  }
+
+  Future<void> _abrirFormPublicar() async {
+    final publicou = await showDialog<bool>(
+      context: context,
+      builder: (_) => _FormNecessidade(ongId: widget.ong.id),
+    );
+    if (publicou == true) {
+      _snack('Necessidade publicada! 🎉', _verde);
+      _carregarTudo();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Painel — ${widget.ong.nome}'),
+          actions: [
+            IconButton(
+              tooltip: 'Sair',
+              onPressed: widget.onLogout,
+              icon: const Icon(Icons.logout),
+            ),
+            const SizedBox(width: 8),
+          ],
+          bottom: TabBar(
+            labelColor: _verde,
+            indicatorColor: _verde,
+            tabs: [
+              Tab(text: 'Necessidades (${_necessidades.length})'),
+              Tab(text: 'Interesses (${_interesses.length})'),
+            ],
+          ),
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _abrirFormPublicar,
+          backgroundColor: _verde,
+          icon: const Icon(Icons.add),
+          label: const Text('Publicar necessidade'),
+        ),
+        body: _carregando
+            ? const Center(child: CircularProgressIndicator())
+            : TabBarView(
+                children: [
+                  _abaNecessidades(),
+                  _abaInteresses(),
+                ],
+              ),
+      ),
+    );
+  }
+
+  // ---- ABA 1: necessidades publicadas ----
+  Widget _abaNecessidades() {
+    if (_necessidades.isEmpty) {
+      return const Center(
+        child: Text(
+          'Nenhuma necessidade publicada ainda.\nClique em "Publicar necessidade".',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: _necessidades.length,
+      itemBuilder: (context, i) {
+        final n = _necessidades[i];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: _verde.withValues(alpha: 0.12),
+              child: const Icon(Icons.campaign, color: _verde),
+            ),
+            title: Text(n.titulo,
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text('${n.categoria} • ${n.descricao}'),
+            trailing: n.urgente
+                ? Chip(
+                    label: const Text('Urgente'),
+                    backgroundColor: Colors.red.shade50,
+                    labelStyle: TextStyle(color: Colors.red.shade700),
+                  )
+                : Text(n.status,
+                    style: TextStyle(color: Colors.grey.shade600)),
+          ),
+        );
+      },
+    );
+  }
+
+  // ---- ABA 2: interesses recebidos ----
+  Widget _abaInteresses() {
+    if (_interesses.isEmpty) {
+      return const Center(
+        child: Text(
+          'Nenhum interesse recebido ainda.',
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: _interesses.length,
+      itemBuilder: (context, i) {
+        final it = _interesses[i];
+        final pendente = it.status == 'PENDENTE';
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: _verde.withValues(alpha: 0.12),
+                  child: const Icon(Icons.person, color: _verde),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(it.doadorNome ?? 'Doador',
+                          style:
+                              const TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Text('Interesse em: ${it.necessidadeTitulo ?? "-"}',
+                          style: TextStyle(color: Colors.grey.shade700)),
+                    ],
+                  ),
+                ),
+                if (pendente) ...[
+                  TextButton.icon(
+                    onPressed: () => _recusar(it),
+                    icon: const Icon(Icons.close, color: Colors.red),
+                    label: const Text('Recusar',
+                        style: TextStyle(color: Colors.red)),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => _aceitar(it),
+                    icon: const Icon(Icons.check),
+                    label: const Text('Aceitar'),
+                  ),
+                ] else
+                  _statusBadge(it.status),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _statusBadge(String status) {
+    final aceito = status == 'ACEITO';
+    final cor = aceito ? _verde : Colors.red.shade600;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: cor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        aceito ? 'Match ✓' : 'Recusado',
+        style: TextStyle(color: cor, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+// ===========================================================================
+// FORMULARIO DE PUBLICAR NECESSIDADE (dialog)
+// ===========================================================================
+class _FormNecessidade extends StatefulWidget {
+  final int ongId;
+
+  const _FormNecessidade({required this.ongId});
+
+  @override
+  State<_FormNecessidade> createState() => _FormNecessidadeState();
+}
+
+class _FormNecessidadeState extends State<_FormNecessidade> {
+  final _formKey = GlobalKey<FormState>();
+  final _tituloController = TextEditingController();
+  final _descricaoController = TextEditingController();
+  final _categoriaController = TextEditingController();
+  bool _urgente = false;
+  bool _enviando = false;
+
+  final NecessidadeService _service = NecessidadeService();
+
+  @override
+  void dispose() {
+    _tituloController.dispose();
+    _descricaoController.dispose();
+    _categoriaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _publicar() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _enviando = true);
+    try {
+      await _service.criar(
+        titulo: _tituloController.text.trim(),
+        descricao: _descricaoController.text.trim(),
+        categoria: _categoriaController.text.trim(),
+        urgente: _urgente,
+        ongId: widget.ongId,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _enviando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Publicar necessidade'),
+      content: SizedBox(
+        width: 420,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _tituloController,
+                  decoration: const InputDecoration(labelText: 'Título'),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Informe o título' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _descricaoController,
+                  decoration: const InputDecoration(labelText: 'Descrição'),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _categoriaController,
+                  decoration: const InputDecoration(
+                      labelText: 'Categoria (ex.: Alimento, Roupa)'),
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Marcar como urgente'),
+                  activeThumbColor: _verde,
+                  value: _urgente,
+                  onChanged: (v) => setState(() => _urgente = v),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _enviando ? null : () => Navigator.pop(context, false),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _enviando ? null : _publicar,
+          child: _enviando
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                )
+              : const Text('Publicar'),
+        ),
+      ],
+    );
+  }
+}

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
-import '../empresa/home_empresa_screen.dart';
+import '../ong/painel_ong_screen.dart';
 import 'cadastro_tipo_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         MaterialPageRoute(
 
-          builder: (_) => HomeEmpresaScreen(
+          builder: (_) => PainelOngScreen(
             emailUsuario: _emailController.text,
           ),
         ),
