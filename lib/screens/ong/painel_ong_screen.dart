@@ -13,6 +13,7 @@ import 'configuracoes_screen.dart';
 import 'perfil_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../config/config_controller.dart';
+import '../../widgets/notificacao_bell.dart';
 
 const Color _verde = AppColors.primary;
 
@@ -317,6 +318,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
         appBar: AppBar(
           title: Text('Painel — ${widget.ong.nome}'),
           actions: [
+            const NotificacaoBell(),
             IconButton(
               tooltip: 'Meu Perfil',
               onPressed: () => Navigator.push(
