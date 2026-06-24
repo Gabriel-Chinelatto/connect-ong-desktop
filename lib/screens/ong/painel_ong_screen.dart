@@ -16,8 +16,15 @@ const Color _verde = Color(0xFF2E7D32);
 /// e mostra o painel com necessidades publicadas e interesses recebidos.
 class PainelOngScreen extends StatefulWidget {
   final String emailUsuario;
+  final int? ongId;
+  final String? ongNome;
 
-  const PainelOngScreen({super.key, required this.emailUsuario});
+  const PainelOngScreen({
+    super.key,
+    required this.emailUsuario,
+    this.ongId,
+    this.ongNome,
+  });
 
   @override
   State<PainelOngScreen> createState() => _PainelOngScreenState();
@@ -38,6 +45,21 @@ class _PainelOngScreenState extends State<PainelOngScreen> {
 
   Future<void> _resolverOng() async {
     setState(() => _carregando = true);
+
+    // Caminho direto: o login ja trouxe o ongId vinculado ao perfil.
+    if (widget.ongId != null) {
+      setState(() {
+        _ong = Ong(
+          id: widget.ongId!,
+          nome: widget.ongNome ?? 'Minha ONG',
+          email: widget.emailUsuario,
+          cidade: '',
+        );
+        _carregando = false;
+      });
+      return;
+    }
+
     try {
       final encontrada =
           await _ongService.buscarPorEmail(widget.emailUsuario);

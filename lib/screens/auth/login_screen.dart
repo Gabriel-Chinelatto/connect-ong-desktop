@@ -26,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final authService = AuthService();
 
-    final sucesso = await authService.login(
+    final usuario = await authService.login(
       _emailController.text,
       _senhaController.text,
     );
@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
 
-    if (sucesso) {
+    if (usuario != null) {
 
       Navigator.pushReplacement(
 
@@ -47,6 +47,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
           builder: (_) => PainelOngScreen(
             emailUsuario: _emailController.text,
+            ongId: usuario['ongId'],
+            ongNome: usuario['nome'],
           ),
         ),
       );

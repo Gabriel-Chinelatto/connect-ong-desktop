@@ -20,6 +20,34 @@ class OngService {
     return data.map((json) => Ong.fromJson(json)).toList();
   }
 
+  // Cadastra uma ONG: cria o perfil + a conta de login juntos.
+  Future<void> registrar({
+    required String nome,
+    required String email,
+    required String telefone,
+    required String cidade,
+    required String descricao,
+    required String senha,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${ApiService.baseUrl}/ongs/registro'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'nome': nome,
+        'email': email,
+        'telefone': telefone,
+        'cidade': cidade,
+        'descricao': descricao,
+        'senha': senha,
+      }),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      throw Exception(body['erro'] ?? 'Erro ao cadastrar ONG');
+    }
+  }
+
   // Tenta identificar a ONG do usuario pelo email do login.
   // Retorna null se nenhuma ONG tiver esse email.
   Future<Ong?> buscarPorEmail(String email) async {
