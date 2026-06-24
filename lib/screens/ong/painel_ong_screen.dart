@@ -6,6 +6,7 @@ import '../../models/interesse.dart';
 import '../../services/ong_service.dart';
 import '../../services/necessidade_service.dart';
 import '../../services/interesse_service.dart';
+import '../../services/prestacao_service.dart';
 import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
 import 'configuracoes_screen.dart';
@@ -235,6 +236,79 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     }
   }
 
+  Future<void> _abrirPrestarContas(Interesse it) async {
+    final tituloC = TextEditingController();
+    final descC = TextEditingController();
+    final fotoC = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Prestar contas'),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: tituloC,
+                decoration: const InputDecoration(labelText: 'Título'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descC,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                    labelText: 'O que foi feito com a doação'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: fotoC,
+                decoration:
+                    const InputDecoration(labelText: 'URL da foto (opcional)'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (tituloC.text.trim().isEmpty) return;
+              try {
+                await PrestacaoService().criar(
+                  interesseId: it.id,
+                  titulo: tituloC.text.trim(),
+                  descricao: descC.text.trim(),
+                  fotoUrl: fotoC.text.trim(),
+                );
+                if (!dialogContext.mounted) return;
+                Navigator.pop(dialogContext, true);
+              } catch (e) {
+                if (!dialogContext.mounted) return;
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  SnackBar(
+                    content:
+                        Text(e.toString().replaceFirst('Exception: ', '')),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Publicar'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      _snack('Prestação de contas publicada! 🧾', _verde);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -460,6 +534,12 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                   ),
                 ] else if (it.status == 'ACEITO') ...[
                   _statusBadge(it.status),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _abrirPrestarContas(it),
+                    icon: const Icon(Icons.receipt_long, size: 18),
+                    label: const Text('Prestar contas'),
+                  ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: () {
