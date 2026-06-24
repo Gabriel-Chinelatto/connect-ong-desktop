@@ -17,6 +17,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
   final _telefone = TextEditingController();
   final _cidade = TextEditingController();
   final _descricao = TextEditingController();
+  final _cnpj = TextEditingController();
   final _senha = TextEditingController();
 
   final OngService _ongService = OngService();
@@ -29,6 +30,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
     _telefone.dispose();
     _cidade.dispose();
     _descricao.dispose();
+    _cnpj.dispose();
     _senha.dispose();
     super.dispose();
   }
@@ -43,6 +45,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
         telefone: _telefone.text.trim(),
         cidade: _cidade.text.trim(),
         descricao: _descricao.text.trim(),
+        cnpj: _cnpj.text.trim(),
         senha: _senha.text,
       );
       if (!mounted) return;
@@ -95,6 +98,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
                   _campo(_email, 'E-mail', obrigatorio: true),
                   _campo(_telefone, 'Telefone'),
                   _campo(_cidade, 'Cidade'),
+                  _campo(_cnpj, 'CNPJ (opcional, para verificação)'),
                   _campo(_descricao, 'Descrição', linhas: 3),
                   _campo(_senha, 'Senha', obrigatorio: true, senha: true),
                   const SizedBox(height: 24),

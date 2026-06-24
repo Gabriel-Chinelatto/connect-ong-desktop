@@ -28,6 +28,7 @@ class OngService {
     required String cidade,
     required String descricao,
     required String senha,
+    String cnpj = '',
   }) async {
     final response = await http.post(
       Uri.parse('${ApiService.baseUrl}/ongs/registro'),
@@ -38,6 +39,7 @@ class OngService {
         'telefone': telefone,
         'cidade': cidade,
         'descricao': descricao,
+        'cnpj': cnpj,
         'senha': senha,
       }),
     );
