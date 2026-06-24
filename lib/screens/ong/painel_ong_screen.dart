@@ -8,7 +8,10 @@ import '../../services/necessidade_service.dart';
 import '../../services/interesse_service.dart';
 import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
+import 'configuracoes_screen.dart';
+import 'perfil_screen.dart';
 import '../../theme/app_colors.dart';
+import '../../config/config_controller.dart';
 
 const Color _verde = AppColors.primary;
 
@@ -85,6 +88,7 @@ class _PainelOngScreenState extends State<PainelOngScreen> {
   }
 
   void _logout() {
+    ConfigController.instance.limpar();
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -239,6 +243,22 @@ class _PainelConteudoState extends State<_PainelConteudo> {
         appBar: AppBar(
           title: Text('Painel — ${widget.ong.nome}'),
           actions: [
+            IconButton(
+              tooltip: 'Meu Perfil',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PerfilScreen()),
+              ),
+              icon: const Icon(Icons.person_outline),
+            ),
+            IconButton(
+              tooltip: 'Configurações',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ConfiguracoesScreen()),
+              ),
+              icon: const Icon(Icons.settings_outlined),
+            ),
             IconButton(
               tooltip: 'Sair',
               onPressed: widget.onLogout,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../../theme/app_colors.dart';
+import '../../config/config_controller.dart';
 import '../ong/painel_ong_screen.dart';
 import 'cadastro_ong_screen.dart';
 
@@ -39,6 +40,13 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (usuario != null) {
+
+      // Carrega as preferencias (tema, fonte, etc.) do usuario.
+      final id = usuario['id'];
+      if (id is int) {
+        await ConfigController.instance.carregar(id);
+        if (!mounted) return;
+      }
 
       Navigator.pushReplacement(
 
