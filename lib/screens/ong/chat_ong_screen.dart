@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../../models/mensagem.dart';
 import '../../services/mensagem_service.dart';
+import '../../theme/app_colors.dart';
 
-const Color _verde = Color(0xFF2E7D32);
+const Color _verde = AppColors.primary;
 
 /// Tela de chat da ONG com um doador (dentro de um match aceito).
 /// Atualiza automaticamente a cada 2 segundos (polling).

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'screens/auth/login_screen.dart';
+import 'theme/app_colors.dart';
 
 void main() {
 
@@ -37,7 +38,7 @@ class ConnectONGApp extends StatelessWidget {
 
         colorScheme: ColorScheme.fromSeed(
 
-          seedColor: const Color(0xFF2E7D32),
+          seedColor: AppColors.primary,
 
           brightness: Brightness.light,
         ),
@@ -89,7 +90,7 @@ class ConnectONGApp extends StatelessWidget {
             elevation: 0,
 
             backgroundColor:
-                const Color(0xFF2E7D32),
+                AppColors.primary,
 
             foregroundColor: Colors.white,
 
@@ -152,7 +153,7 @@ class ConnectONGApp extends StatelessWidget {
                 BorderRadius.circular(14),
 
             borderSide: const BorderSide(
-              color: Color(0xFF2E7D32),
+              color: AppColors.primary,
               width: 2,
             ),
           ),

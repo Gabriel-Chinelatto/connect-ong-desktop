@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../theme/app_colors.dart';
 import '../ong/painel_ong_screen.dart';
 import 'cadastro_ong_screen.dart';
 
@@ -117,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E7D32),
+                  color: AppColors.primary,
                 ),
               ),
 
@@ -158,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: ElevatedButton(
 
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
 

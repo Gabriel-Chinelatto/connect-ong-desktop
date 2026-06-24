@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/ong_service.dart';
+import '../../theme/app_colors.dart';
 
 class CadastroOngScreen extends StatefulWidget {
   const CadastroOngScreen({super.key});
@@ -48,7 +49,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('ONG cadastrada! Agora é só fazer login. 💚'),
-          backgroundColor: Color(0xFF2E7D32),
+          backgroundColor: AppColors.primary,
         ),
       );
       Navigator.pop(context); // volta para o login

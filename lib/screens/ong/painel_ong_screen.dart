@@ -8,8 +8,9 @@ import '../../services/necessidade_service.dart';
 import '../../services/interesse_service.dart';
 import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
+import '../../theme/app_colors.dart';
 
-const Color _verde = Color(0xFF2E7D32);
+const Color _verde = AppColors.primary;
 
 /// Painel administrativo da ONG (desktop).
 /// Resolve qual ONG o usuario gerencia (pelo email, com seletor de fallback)
