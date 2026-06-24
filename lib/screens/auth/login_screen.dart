@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
 import '../ong/painel_ong_screen.dart';
-import 'cadastro_tipo_screen.dart';
+import 'cadastro_ong_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,6 +34,8 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _loading = false;
     });
+
+    if (!mounted) return;
 
     if (sucesso) {
 
@@ -188,7 +190,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     MaterialPageRoute(
                       builder: (_) =>
-                          const CadastroTipoScreen(),
+                          const CadastroOngScreen(),
                     ),
                   );
                 },
