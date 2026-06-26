@@ -6,6 +6,10 @@ import 'package:http/http.dart' as http;
 import '../models/ong.dart';
 import 'api_service.dart';
 
+/// Cadastro e identificacao de ONGs (endpoint /ongs).
+///
+/// Cobre o registro de uma nova ONG (perfil + conta de login juntos) e a
+/// descoberta de qual ONG o usuario gerencia a partir do email do login.
 class OngService {
   // Lista todas as ONGs (usado no seletor "qual ONG voce gerencia").
   Future<List<Ong>> listarTodas() async {

@@ -5,6 +5,10 @@ import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
 
+/// Prestacao de contas da ONG num match (endpoint /prestacoes).
+///
+/// Apos receber uma doacao, a ONG publica como ela foi usada (titulo,
+/// descricao e foto), reforcando a transparencia exibida ao doador.
 class PrestacaoService {
   // ONG publica uma prestacao de contas num match.
   Future<void> criar({

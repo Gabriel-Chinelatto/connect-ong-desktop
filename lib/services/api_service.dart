@@ -1,3 +1,10 @@
+/// Base de toda a comunicacao HTTP com a API Spring Boot.
+///
+/// Centraliza: a [baseUrl] do backend, o token JWT de acesso (mantido apenas
+/// em memoria) e a montagem dos cabecalhos `Authorization: Bearer <token>`
+/// que autenticam cada requisicao. Como o token nao e persistido em disco,
+/// o app desktop exige um novo login a cada abertura. Os servicos especificos
+/// reutilizam estes cabecalhos e aplicam um timeout de 10s em cada chamada.
 class ApiService {
 
   static const String baseUrl =

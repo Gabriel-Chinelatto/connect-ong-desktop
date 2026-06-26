@@ -5,6 +5,10 @@ import '../../services/ong_service.dart';
 import '../../theme/app_colors.dart';
 import '../legal/documentos_legais_screen.dart';
 
+/// Cadastro de uma nova ONG na plataforma.
+///
+/// Coleta os dados da ONG e a senha de acesso, exige o aceite dos termos
+/// (LGPD) e cria, de uma vez, o perfil da ONG mais a conta de login.
 class CadastroOngScreen extends StatefulWidget {
   const CadastroOngScreen({super.key});
 

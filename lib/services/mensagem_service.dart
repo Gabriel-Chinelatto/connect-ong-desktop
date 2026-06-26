@@ -6,6 +6,11 @@ import 'package:http/http.dart' as http;
 import '../models/mensagem.dart';
 import 'api_service.dart';
 
+/// Chat de um match (endpoint /mensagens), entre a ONG e o doador.
+///
+/// So existe conversa apos o interesse virar match (aceito). A tela de chat
+/// faz polling deste servico a cada 2s para simular tempo real, ja que nao
+/// ha WebSocket. As mensagens vem ordenadas por data.
 class MensagemService {
   // Lista as mensagens de um match (ordenadas por data).
   Future<List<Mensagem>> listar(int interesseId) async {

@@ -4,6 +4,10 @@ import '../../config/config_controller.dart';
 import '../../services/perfil_service.dart';
 import '../../theme/app_colors.dart';
 
+/// Perfil do usuario responsavel pela ONG.
+///
+/// Permite ver e editar os dados do perfil (nome, contato, bio, foto) e
+/// alterar a senha, salvando via [PerfilService].
 class PerfilScreen extends StatefulWidget {
   const PerfilScreen({super.key});
 

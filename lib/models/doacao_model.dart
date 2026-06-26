@@ -1,3 +1,4 @@
+/// Um item de doacao (espelha a entidade /doacoes do backend).
 class DoacaoModel {
 
   final int? id;

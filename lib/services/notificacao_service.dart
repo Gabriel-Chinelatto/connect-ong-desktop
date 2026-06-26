@@ -6,6 +6,10 @@ import 'package:http/http.dart' as http;
 import '../models/notificacao.dart';
 import 'api_service.dart';
 
+/// Notificacoes do usuario da ONG (endpoint /notificacoes).
+///
+/// Lista as notificacoes, conta as nao-lidas (usado pelo sino do painel) e
+/// marca todas como lidas. Sempre filtradas pelo usuario autenticado.
 class NotificacaoService {
   Future<List<Notificacao>> listar(int usuarioId) async {
     // Timeout de 10s para nao travar a UI se o servidor nao responder.

@@ -6,6 +6,11 @@ import 'package:http/http.dart' as http;
 import '../models/necessidade.dart';
 import 'api_service.dart';
 
+/// Necessidades publicadas pela ONG (endpoint /necessidades).
+///
+/// A ONG cria pedidos (alimentos, roupas, etc.) que os doadores veem no app
+/// mobile; aqui ela publica novas necessidades e lista as proprias. As
+/// requisicoes seguem autenticadas via [ApiService] e com timeout de 10s.
 class NecessidadeService {
   // ONG publica uma nova necessidade.
   Future<void> criar({

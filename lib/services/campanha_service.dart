@@ -6,6 +6,10 @@ import 'package:http/http.dart' as http;
 import '../models/campanha.dart';
 import 'api_service.dart';
 
+/// Campanhas de arrecadacao da ONG (endpoint /campanhas).
+///
+/// A ONG cria campanhas com meta de valor, lista as proprias e pode encerra-las.
+/// Chamadas autenticadas via [ApiService], com timeout de 10s.
 class CampanhaService {
   static const String _base = '${ApiService.baseUrl}/campanhas';
 

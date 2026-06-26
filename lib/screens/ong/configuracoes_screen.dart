@@ -7,6 +7,11 @@ import '../../services/perfil_service.dart';
 import '../../theme/app_colors.dart';
 import '../legal/documentos_legais_screen.dart';
 
+/// Central de configuracoes da ONG.
+///
+/// Ajusta aparencia e acessibilidade (tema, fonte, alto contraste) e
+/// notificacoes, salvando via [ConfigController]; tambem aciona o "Modo Feira"
+/// (dados demonstrativos) e da acesso aos documentos legais.
 class ConfiguracoesScreen extends StatefulWidget {
   const ConfiguracoesScreen({super.key});
 

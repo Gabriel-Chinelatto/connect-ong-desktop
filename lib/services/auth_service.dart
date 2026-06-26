@@ -5,6 +5,11 @@ import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
 
+/// Autenticacao do usuario da ONG contra a API (POST /usuarios/login).
+///
+/// Em caso de sucesso, captura o JWT retornado e o guarda no [ApiService]
+/// para que as proximas chamadas sejam autenticadas. Cada usuario so enxerga
+/// os proprios dados/ONG; o token nao e persistido (login a cada abertura).
 class AuthService {
   /// Faz login e retorna os dados do usuario (id, nome, email, tipo, ongId)
   /// ou null se as credenciais forem invalidas.

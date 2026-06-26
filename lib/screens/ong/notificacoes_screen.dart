@@ -5,6 +5,10 @@ import '../../models/notificacao.dart';
 import '../../services/notificacao_service.dart';
 import '../../theme/app_colors.dart';
 
+/// Lista de notificacoes do usuario da ONG.
+///
+/// Mostra os avisos (novos interesses, mensagens, etc.) e marca todas como
+/// lidas ao abrir, zerando o contador do sino no painel.
 class NotificacoesScreen extends StatefulWidget {
   const NotificacoesScreen({super.key});
 

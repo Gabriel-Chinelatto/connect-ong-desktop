@@ -5,6 +5,10 @@ import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
 
+/// Perfil e seguranca da conta do usuario (endpoint /usuarios/{id}).
+///
+/// Permite ler/editar os dados do perfil e alterar a senha (exige a senha
+/// atual). Opera sempre sobre o usuario autenticado.
 class PerfilService {
   Future<Map<String, dynamic>> obter(int usuarioId) async {
     // Timeout de 10s para nao travar a UI se o servidor nao responder.

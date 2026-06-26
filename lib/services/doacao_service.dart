@@ -6,6 +6,11 @@ import 'package:http/http.dart' as http;
 import '../models/doacao_model.dart';
 import 'api_service.dart';
 
+/// Doacoes/itens (endpoint /doacoes), via metodos estaticos.
+///
+/// Lista e cria registros de doacao. Diferente dos demais servicos, trata
+/// falhas de forma silenciosa (retorna lista vazia ou false) para nao
+/// interromper o fluxo da tela em caso de erro de rede.
 class DoacaoService {
 
   // =========================

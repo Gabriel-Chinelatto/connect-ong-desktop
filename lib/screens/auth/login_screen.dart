@@ -6,6 +6,10 @@ import '../../config/config_controller.dart';
 import '../ong/painel_ong_screen.dart';
 import 'cadastro_ong_screen.dart';
 
+/// Tela inicial: login do responsavel pela ONG.
+///
+/// Autentica via [AuthService] (que guarda o JWT), carrega as preferencias do
+/// usuario e abre o painel da ONG. Da acesso tambem ao cadastro de nova ONG.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 

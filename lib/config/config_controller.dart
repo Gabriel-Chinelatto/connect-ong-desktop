@@ -5,6 +5,10 @@ import '../services/preferencia_service.dart';
 
 /// Controla as preferencias de aparencia/acessibilidade do app desktop.
 /// O MaterialApp escuta este controlador e se reconstroi quando muda.
+///
+/// E um singleton (unica instancia [instance]) porque as preferencias e o
+/// usuario logado sao estado global: qualquer tela le/atualiza por aqui e a
+/// mudanca se reflete no app inteiro. Tambem guarda o [usuarioId] da sessao.
 class ConfigController extends ChangeNotifier {
   ConfigController._();
   static final ConfigController instance = ConfigController._();

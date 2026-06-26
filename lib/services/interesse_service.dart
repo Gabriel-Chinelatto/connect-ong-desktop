@@ -6,6 +6,11 @@ import 'package:http/http.dart' as http;
 import '../models/interesse.dart';
 import 'api_service.dart';
 
+/// Interesses de doadores nas necessidades da ONG (endpoint /interesses).
+///
+/// Regra de negocio central do match: ao aceitar um interesse ele vira um
+/// "match" (libera o chat e a prestacao de contas); ao recusar, e descartado.
+/// A ONG so opera os interesses das proprias necessidades (escopo do JWT).
 class InteresseService {
   // Lista os interesses recebidos nas necessidades de uma ONG.
   Future<List<Interesse>> listarPorOng(int ongId) async {

@@ -3,6 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
+/// Constroi os temas claro/escuro do app a partir da paleta da marca.
+///
+/// Aplica tambem os ajustes de acessibilidade: fonte para dislexia (Lexend)
+/// e alto contraste. Consumido pelo MaterialApp, que reconstroi quando o
+/// [ConfigController] muda as preferencias.
 class AppTheme {
   static ThemeData light({bool dislexia = false, bool altoContraste = false}) =>
       _build(Brightness.light, dislexia, altoContraste);

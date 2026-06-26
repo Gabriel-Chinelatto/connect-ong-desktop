@@ -6,6 +6,11 @@ import 'package:http/http.dart' as http;
 import '../models/preferencia.dart';
 import 'api_service.dart';
 
+/// Preferencias de aparencia/acessibilidade do usuario
+/// (endpoint /usuarios/{id}/preferencias).
+///
+/// Persiste no backend o que o [ConfigController] aplica na UI (tema, fonte,
+/// alto contraste, notificacoes). Le e salva sempre o usuario autenticado.
 class PreferenciaService {
   Future<Preferencia> obter(int usuarioId) async {
     // Timeout de 10s para nao travar a UI se o servidor nao responder.
