@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import '../../models/ong.dart';
 import '../../models/necessidade.dart';
 import '../../models/interesse.dart';
+import '../../models/campanha.dart';
 import '../../services/ong_service.dart';
 import '../../services/necessidade_service.dart';
 import '../../services/interesse_service.dart';
 import '../../services/prestacao_service.dart';
+import '../../services/campanha_service.dart';
 import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
 import 'configuracoes_screen.dart';
@@ -167,9 +169,11 @@ class _PainelConteudo extends StatefulWidget {
 class _PainelConteudoState extends State<_PainelConteudo> {
   final NecessidadeService _necessidadeService = NecessidadeService();
   final InteresseService _interesseService = InteresseService();
+  final CampanhaService _campanhaService = CampanhaService();
 
   List<Necessidade> _necessidades = [];
   List<Interesse> _interesses = [];
+  List<Campanha> _campanhas = [];
   bool _carregando = true;
 
   @override
@@ -183,10 +187,12 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     try {
       final nec = await _necessidadeService.listarPorOng(widget.ong.id);
       final ints = await _interesseService.listarPorOng(widget.ong.id);
+      final camps = await _campanhaService.listarPorOng(widget.ong.id);
       if (!mounted) return;
       setState(() {
         _necessidades = nec;
         _interesses = ints;
+        _campanhas = camps;
         _carregando = false;
       });
     } catch (e) {
@@ -234,6 +240,27 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     if (publicou == true) {
       _snack('Necessidade publicada! 🎉', _verde);
       _carregarTudo();
+    }
+  }
+
+  Future<void> _abrirFormCampanha() async {
+    final criou = await showDialog<bool>(
+      context: context,
+      builder: (_) => _FormCampanha(ongId: widget.ong.id),
+    );
+    if (criou == true) {
+      _snack('Campanha criada! 🎉', _verde);
+      _carregarTudo();
+    }
+  }
+
+  Future<void> _encerrarCampanha(Campanha c) async {
+    try {
+      await _campanhaService.encerrar(c.id);
+      _snack('Campanha encerrada.', Colors.orange.shade700);
+      _carregarTudo();
+    } catch (e) {
+      _snack('Erro ao encerrar campanha', Colors.red);
     }
   }
 
@@ -313,7 +340,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text('Painel — ${widget.ong.nome}'),
@@ -348,6 +375,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
             tabs: [
               Tab(text: 'Necessidades (${_necessidades.length})'),
               Tab(text: 'Interesses (${_interesses.length})'),
+              Tab(text: 'Campanhas (${_campanhas.length})'),
             ],
           ),
         ),
@@ -367,6 +395,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                       children: [
                         _abaNecessidades(),
                         _abaInteresses(),
+                        _abaCampanhas(),
                       ],
                     ),
                   ),
@@ -568,6 +597,115 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     );
   }
 
+  // ---- ABA 3: campanhas da ONG ----
+  Widget _abaCampanhas() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text('Suas campanhas de arrecadação',
+                    style:
+                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              ),
+              ElevatedButton.icon(
+                onPressed: _abrirFormCampanha,
+                icon: const Icon(Icons.add),
+                label: const Text('Nova campanha'),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _campanhas.isEmpty
+              ? const Center(
+                  child: Text(
+                    'Nenhuma campanha criada ainda.\nClique em "Nova campanha".',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(20),
+                  itemCount: _campanhas.length,
+                  itemBuilder: (context, i) => _cardCampanha(_campanhas[i]),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _cardCampanha(Campanha c) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(c.titulo,
+                      style: const TextStyle(
+                          fontSize: 17, fontWeight: FontWeight.bold)),
+                ),
+                if (c.destaque)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: Icon(Icons.star, color: Colors.amber, size: 20),
+                  ),
+                if (c.encerrada)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text('Encerrada',
+                        style: TextStyle(fontSize: 12, color: Colors.black54)),
+                  )
+                else
+                  TextButton(
+                    onPressed: () => _encerrarCampanha(c),
+                    child: const Text('Encerrar'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(c.descricao, style: TextStyle(color: Colors.grey.shade700)),
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: c.progresso / 100,
+                minHeight: 10,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: const AlwaysStoppedAnimation<Color>(_verde),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                    'R\$ ${c.valorArrecadado.toStringAsFixed(0)} de '
+                    'R\$ ${c.metaValor.toStringAsFixed(0)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text('${c.progresso}%',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, color: _verde)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _statusBadge(String status) {
     final aceito = status == 'ACEITO';
     final cor = aceito ? _verde : Colors.red.shade600;
@@ -698,6 +836,142 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
                       strokeWidth: 2, color: Colors.white),
                 )
               : const Text('Publicar'),
+        ),
+      ],
+    );
+  }
+}
+
+// ===========================================================================
+// FORMULARIO DE NOVA CAMPANHA (dialog)
+// ===========================================================================
+class _FormCampanha extends StatefulWidget {
+  final int ongId;
+
+  const _FormCampanha({required this.ongId});
+
+  @override
+  State<_FormCampanha> createState() => _FormCampanhaState();
+}
+
+class _FormCampanhaState extends State<_FormCampanha> {
+  final _formKey = GlobalKey<FormState>();
+  final _titulo = TextEditingController();
+  final _descricao = TextEditingController();
+  final _categoria = TextEditingController();
+  final _meta = TextEditingController();
+  bool _destaque = false;
+  bool _enviando = false;
+
+  final CampanhaService _service = CampanhaService();
+
+  @override
+  void dispose() {
+    _titulo.dispose();
+    _descricao.dispose();
+    _categoria.dispose();
+    _meta.dispose();
+    super.dispose();
+  }
+
+  Future<void> _criar() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _enviando = true);
+    try {
+      await _service.criar(
+        titulo: _titulo.text.trim(),
+        descricao: _descricao.text.trim(),
+        metaValor: double.parse(_meta.text.replaceAll(',', '.')),
+        categoria: _categoria.text.trim(),
+        destaque: _destaque,
+        ongId: widget.ongId,
+      );
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _enviando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nova campanha'),
+      content: SizedBox(
+        width: 440,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _titulo,
+                  decoration: const InputDecoration(labelText: 'Título'),
+                  validator: (v) => (v == null || v.trim().length < 3)
+                      ? 'Mínimo 3 caracteres'
+                      : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _descricao,
+                  maxLines: 3,
+                  decoration: const InputDecoration(labelText: 'Descrição'),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _meta,
+                  keyboardType: TextInputType.number,
+                  decoration:
+                      const InputDecoration(labelText: 'Meta (R\$)'),
+                  validator: (v) {
+                    final n = double.tryParse(
+                        (v ?? '').replaceAll(',', '.'));
+                    if (n == null || n <= 0) return 'Informe uma meta válida';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _categoria,
+                  decoration: const InputDecoration(
+                      labelText: 'Categoria (ex.: Roupas, Educação)'),
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Destacar na plataforma'),
+                  activeThumbColor: _verde,
+                  value: _destaque,
+                  onChanged: (v) => setState(() => _destaque = v),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _enviando ? null : () => Navigator.pop(context, false),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _enviando ? null : _criar,
+          child: _enviando
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                )
+              : const Text('Criar'),
         ),
       ],
     );
