@@ -4,6 +4,7 @@ import '../../config/config_controller.dart';
 import '../../models/preferencia.dart';
 import '../../services/perfil_service.dart';
 import '../../theme/app_colors.dart';
+import '../legal/documentos_legais_screen.dart';
 
 class ConfiguracoesScreen extends StatefulWidget {
   const ConfiguracoesScreen({super.key});
@@ -107,10 +108,32 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: _abrirAlterarSenha,
               ),
+              _secao('Termos e Privacidade', Icons.gavel_outlined),
+              ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: const Text('Politica de Privacidade'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _abrirDocumento(DocumentoLegal.privacidade),
+              ),
+              ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: const Text('Termos de Uso'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _abrirDocumento(DocumentoLegal.termos),
+              ),
               const SizedBox(height: 24),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _abrirDocumento(DocumentoLegal tipo) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DocumentosLegaisScreen(tipo: tipo),
       ),
     );
   }

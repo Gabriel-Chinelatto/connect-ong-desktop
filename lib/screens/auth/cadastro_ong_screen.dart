@@ -1,7 +1,9 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/ong_service.dart';
 import '../../theme/app_colors.dart';
+import '../legal/documentos_legais_screen.dart';
 
 class CadastroOngScreen extends StatefulWidget {
   const CadastroOngScreen({super.key});
@@ -22,6 +24,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
 
   final OngService _ongService = OngService();
   bool _enviando = false;
+  bool _aceitouTermos = false;
 
   @override
   void dispose() {
@@ -37,6 +40,16 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
 
   Future<void> _cadastrar() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_aceitouTermos) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Para continuar, aceite os Termos de Uso e a Politica de Privacidade.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
     setState(() => _enviando = true);
     try {
       await _ongService.registrar(
@@ -101,6 +114,8 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
                   _campo(_cnpj, 'CNPJ (opcional, para verificação)'),
                   _campo(_descricao, 'Descrição', linhas: 3),
                   _campo(_senha, 'Senha', obrigatorio: true, senha: true),
+                  const SizedBox(height: 8),
+                  _consentimento(),
                   const SizedBox(height: 24),
                   SizedBox(
                     height: 50,
@@ -122,6 +137,64 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _abrirDocumento(DocumentoLegal tipo) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DocumentosLegaisScreen(tipo: tipo),
+      ),
+    );
+  }
+
+  Widget _consentimento() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Checkbox(
+          value: _aceitouTermos,
+          activeColor: AppColors.primary,
+          onChanged: (v) => setState(() => _aceitouTermos = v ?? false),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text.rich(
+              TextSpan(
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
+                children: [
+                  const TextSpan(text: 'Li e concordo com os '),
+                  TextSpan(
+                    text: 'Termos de Uso',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () => _abrirDocumento(DocumentoLegal.termos),
+                  ),
+                  const TextSpan(text: ' e a '),
+                  TextSpan(
+                    text: 'Politica de Privacidade',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap =
+                          () => _abrirDocumento(DocumentoLegal.privacidade),
+                  ),
+                  const TextSpan(text: '.'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
