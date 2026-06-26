@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/config_controller.dart';
 import '../../models/preferencia.dart';
+import '../../services/demo_service.dart';
 import '../../services/perfil_service.dart';
 import '../../theme/app_colors.dart';
 import '../legal/documentos_legais_screen.dart';
@@ -15,6 +16,7 @@ class ConfiguracoesScreen extends StatefulWidget {
 
 class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
   late Preferencia _p;
+  bool _carregandoDemo = false;
 
   @override
   void initState() {
@@ -121,6 +123,21 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _abrirDocumento(DocumentoLegal.termos),
               ),
+              _secao('Modo Feira', Icons.celebration_outlined),
+              ListTile(
+                leading: const Icon(Icons.auto_awesome),
+                title: const Text('Carregar dados demonstrativos'),
+                subtitle: const Text(
+                    'Popula o sistema com ONGs, doadores e doacoes para a apresentacao'),
+                trailing: _carregandoDemo
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.chevron_right),
+                onTap: _carregandoDemo ? null : _carregarDadosDemo,
+              ),
               const SizedBox(height: 24),
             ],
           ),
@@ -136,6 +153,57 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
         builder: (_) => DocumentosLegaisScreen(tipo: tipo),
       ),
     );
+  }
+
+  Future<void> _carregarDadosDemo() async {
+    setState(() => _carregandoDemo = true);
+    try {
+      final r = await DemoService().carregarDadosDemo();
+      if (!mounted) return;
+      final jaTinha = r['status'] == 'ja_carregado';
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(jaTinha
+              ? 'Dados demonstrativos ja carregados'
+              : 'Dados demonstrativos carregados!'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(jaTinha
+                  ? 'O sistema ja possui os dados de demonstracao.'
+                  : 'ONGs, doadores, necessidades, matches e doacoes foram criados.'),
+              const SizedBox(height: 12),
+              const Text('Contas de exemplo (senha: demo123):',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Text('ONG:    ${r['contaOngExemplo']}'),
+              Text('Doador: ${r['contaDoadorExemplo']}'),
+              const SizedBox(height: 12),
+              Text('Total de ONGs: ${r['totalOngs']}  •  '
+                  'Necessidades: ${r['totalNecessidades']}'),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Entendi'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _carregandoDemo = false);
+    }
   }
 
   Widget _secao(String titulo, IconData icone) {
