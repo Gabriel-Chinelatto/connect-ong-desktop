@@ -1,0 +1,350 @@
+import 'package:flutter/material.dart';
+
+import '../../models/perfil_publico_ong.dart';
+import '../../services/perfil_publico_service.dart';
+import '../../theme/app_colors.dart';
+
+/// Pre-visualizacao de como a ONG aparece publicamente para os doadores
+/// (mesmo endpoint usado pelo app do doador).
+class PerfilPublicoOngScreen extends StatefulWidget {
+  final int ongId;
+  final String ongNome;
+
+  const PerfilPublicoOngScreen({
+    super.key,
+    required this.ongId,
+    required this.ongNome,
+  });
+
+  @override
+  State<PerfilPublicoOngScreen> createState() => _PerfilPublicoOngScreenState();
+}
+
+class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
+  final PerfilPublicoService _service = PerfilPublicoService();
+  PerfilPublicoOng? _perfil;
+  bool _carregando = true;
+  bool _erro = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregar();
+  }
+
+  Future<void> _carregar() async {
+    setState(() {
+      _carregando = true;
+      _erro = false;
+    });
+    try {
+      final p = await _service.buscar(widget.ongId);
+      if (!mounted) return;
+      setState(() {
+        _perfil = p;
+        _carregando = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _carregando = false;
+        _erro = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text('Perfil publico — ${widget.ongNome}'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+      ),
+      body: _carregando
+          ? const Center(child: CircularProgressIndicator())
+          : _erro || _perfil == null
+              ? _vazio()
+              : Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 760),
+                    child: ListView(
+                      padding: const EdgeInsets.all(24),
+                      children: [
+                        _cabecalho(_perfil!),
+                        const SizedBox(height: 16),
+                        _stats(_perfil!),
+                        const SizedBox(height: 16),
+                        _secao('Sobre', Icons.info_outline, [
+                          Text(
+                            _perfil!.descricao.isNotEmpty
+                                ? _perfil!.descricao
+                                : 'Sem descricao.',
+                            style: const TextStyle(height: 1.5),
+                          ),
+                        ]),
+                        _secao('Contato', Icons.contact_mail_outlined, [
+                          _linha(Icons.email_outlined, _perfil!.email),
+                          _linha(Icons.phone_outlined, _perfil!.telefone),
+                          if (_perfil!.cnpj != null && _perfil!.cnpj!.isNotEmpty)
+                            _linha(Icons.badge_outlined,
+                                'CNPJ: ${_perfil!.cnpj}'),
+                        ]),
+                        if (_perfil!.campanhas.isNotEmpty)
+                          _secao('Campanhas', Icons.campaign_outlined, [
+                            for (final c in _perfil!.campanhas) _campanha(c),
+                          ]),
+                        if (_perfil!.necessidades.isNotEmpty)
+                          _secao('Necessidades', Icons.favorite_outline, [
+                            for (final n in _perfil!.necessidades)
+                              _necessidade(n),
+                          ]),
+                        if (_perfil!.prestacoes.isNotEmpty)
+                          _secao('Prestacoes de contas',
+                              Icons.receipt_long_outlined, [
+                            for (final p in _perfil!.prestacoes)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(p.titulo,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600)),
+                                    if (p.descricao.isNotEmpty)
+                                      Text(p.descricao),
+                                  ],
+                                ),
+                              ),
+                          ]),
+                        if (_perfil!.avaliacoes.isNotEmpty)
+                          _secao('Avaliacoes', Icons.star_outline, [
+                            for (final a in _perfil!.avaliacoes) _avaliacao(a),
+                          ]),
+                      ],
+                    ),
+                  ),
+                ),
+    );
+  }
+
+  Widget _vazio() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+          const SizedBox(height: 12),
+          const Text('Nao foi possivel carregar o perfil'),
+          const SizedBox(height: 8),
+          TextButton(onPressed: _carregar, child: const Text('Tentar de novo')),
+        ],
+      ),
+    );
+  }
+
+  Widget _cabecalho(PerfilPublicoOng p) {
+    final inicial = p.nome.isNotEmpty ? p.nome[0].toUpperCase() : '?';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 34,
+              backgroundColor: AppColors.primary,
+              child: Text(inicial,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(p.nome,
+                            style: const TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.bold)),
+                      ),
+                      if (p.verificada) ...[
+                        const SizedBox(width: 6),
+                        const Icon(Icons.verified,
+                            color: Colors.blue, size: 20),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(p.cidade,
+                      style: TextStyle(color: Colors.grey.shade700)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      for (int i = 0; i < 5; i++)
+                        Icon(
+                            i < p.notaMedia.round()
+                                ? Icons.star
+                                : Icons.star_border,
+                            size: 18,
+                            color: Colors.amber),
+                      const SizedBox(width: 8),
+                      Text(p.totalAvaliacoes > 0
+                          ? '${p.notaMedia.toStringAsFixed(1)} (${p.totalAvaliacoes})'
+                          : 'Sem avaliacoes'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _stats(PerfilPublicoOng p) {
+    Widget item(IconData icon, int v, String label) => Expanded(
+          child: Column(
+            children: [
+              Icon(icon, color: AppColors.primary),
+              const SizedBox(height: 4),
+              Text('$v',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 18)),
+              Text(label, style: const TextStyle(fontSize: 12)),
+            ],
+          ),
+        );
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Row(
+          children: [
+            item(Icons.favorite_outline, p.totalNecessidades, 'Necessidades'),
+            item(Icons.campaign_outlined, p.totalCampanhas, 'Campanhas'),
+            item(Icons.receipt_long_outlined, p.totalPrestacoes, 'Prestacoes'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _secao(String titulo, IconData icon, List<Widget> filhos) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: AppColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(titulo,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...filhos,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _linha(IconData icon, String texto) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: AppColors.primary),
+            const SizedBox(width: 10),
+            Expanded(child: Text(texto)),
+          ],
+        ),
+      );
+
+  Widget _campanha(CampanhaResumo c) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(c.titulo,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+              ),
+              if (c.encerrada)
+                const Text('Encerrada',
+                    style: TextStyle(fontSize: 12, color: Colors.black54)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: c.progresso / 100,
+              minHeight: 8,
+              backgroundColor: Colors.grey.shade200,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+              'R\$ ${c.valorArrecadado.toStringAsFixed(0)} de '
+              'R\$ ${c.metaValor.toStringAsFixed(0)} (${c.progresso}%)',
+              style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _necessidade(NecessidadeResumo n) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(n.urgente ? Icons.priority_high : Icons.circle,
+              size: n.urgente ? 18 : 8,
+              color: n.urgente ? Colors.red : AppColors.primary),
+          const SizedBox(width: 10),
+          Expanded(child: Text(n.titulo)),
+          if (n.categoria.isNotEmpty)
+            Text(n.categoria,
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _avaliacao(AvaliacaoResumo a) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(a.doadorNome,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(width: 8),
+              for (int i = 0; i < 5; i++)
+                Icon(i < a.nota ? Icons.star : Icons.star_border,
+                    size: 14, color: Colors.amber),
+            ],
+          ),
+          if (a.comentario != null && a.comentario!.isNotEmpty)
+            Text(a.comentario!),
+        ],
+      ),
+    );
+  }
+}

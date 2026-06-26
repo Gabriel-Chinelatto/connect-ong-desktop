@@ -14,6 +14,7 @@ import '../../services/atividade_service.dart';
 import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
 import 'configuracoes_screen.dart';
+import 'perfil_publico_ong_screen.dart';
 import 'perfil_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../config/config_controller.dart';
@@ -359,6 +360,19 @@ class _PainelConteudoState extends State<_PainelConteudo> {
           title: Text('Painel — ${widget.ong.nome}'),
           actions: [
             const NotificacaoBell(),
+            IconButton(
+              tooltip: 'Ver meu perfil publico',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PerfilPublicoOngScreen(
+                    ongId: widget.ong.id,
+                    ongNome: widget.ong.nome,
+                  ),
+                ),
+              ),
+              icon: const Icon(Icons.visibility_outlined),
+            ),
             IconButton(
               tooltip: 'Meu Perfil',
               onPressed: () => Navigator.push(
