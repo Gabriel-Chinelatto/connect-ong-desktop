@@ -15,6 +15,7 @@ import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
 import 'configuracoes_screen.dart';
 import 'perfil_publico_ong_screen.dart';
+import 'mural_impacto_screen.dart';
 import 'perfil_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../config/config_controller.dart';
@@ -360,6 +361,16 @@ class _PainelConteudoState extends State<_PainelConteudo> {
           title: Text('Painel — ${widget.ong.nome}'),
           actions: [
             const NotificacaoBell(),
+            IconButton(
+              tooltip: 'Mural de Impacto',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const MuralImpactoScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.public),
+            ),
             IconButton(
               tooltip: 'Ver meu perfil publico',
               onPressed: () => Navigator.push(

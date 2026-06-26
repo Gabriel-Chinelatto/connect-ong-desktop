@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 200" width="260" height="200" fill="none">
+  <defs>
+    <linearGradient id="coracao" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0FA85C"/>
+      <stop offset="1" stop-color="#076637"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Ondas de impacto (ripple) -->
+  <circle cx="130" cy="95" r="88" stroke="#0A8449" stroke-opacity="0.16" stroke-width="2"/>
+  <circle cx="130" cy="95" r="60" stroke="#0A8449" stroke-opacity="0.24" stroke-width="2"/>
+
+  <!-- Pessoas alcancadas (em volta) -->
+  <g fill="#0A8449">
+    <circle cx="42"  cy="95"  r="6" fill-opacity="0.55"/>
+    <circle cx="218" cy="95"  r="6" fill-opacity="0.55"/>
+    <circle cx="130" cy="9"   r="6" fill-opacity="0.55"/>
+    <circle cx="130" cy="181" r="6" fill-opacity="0.55"/>
+    <circle cx="70"  cy="32"  r="5" fill="#A8DBC1"/>
+    <circle cx="190" cy="32"  r="5" fill="#A8DBC1"/>
+    <circle cx="70"  cy="158" r="5" fill="#A8DBC1"/>
+    <circle cx="190" cy="158" r="5" fill="#A8DBC1"/>
+  </g>
+
+  <!-- Brilho atras do coracao -->
+  <circle cx="130" cy="95" r="40" fill="#A8DBC1" fill-opacity="0.35"/>
+
+  <!-- Coracao -->
+  <g transform="translate(80,48)">
+    <path d="M50,84 C50,84 12,58 12,38 C12,24 26,19 36,27 C43,32 50,43 50,43 C50,43 57,32 64,27 C74,19 88,24 88,38 C88,58 50,84 50,84 Z"
+          fill="url(#coracao)"/>
+  </g>
+</svg>
