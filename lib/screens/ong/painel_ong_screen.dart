@@ -6,6 +6,7 @@ import '../../models/necessidade.dart';
 import '../../models/interesse.dart';
 import '../../models/campanha.dart';
 import '../../models/atividade.dart';
+import '../../services/api_service.dart';
 import '../../services/ong_service.dart';
 import '../../services/necessidade_service.dart';
 import '../../services/interesse_service.dart';
@@ -102,6 +103,8 @@ class _PainelOngScreenState extends State<PainelOngScreen> {
 
   void _logout() {
     ConfigController.instance.limpar();
+    // Limpa o token JWT em memoria ao sair.
+    ApiService.setToken(null);
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -365,6 +368,11 @@ class _PainelConteudoState extends State<_PainelConteudo> {
         ],
       ),
     );
+
+    // Libera os controllers depois que o dialogo fecha (evita vazamento).
+    tituloC.dispose();
+    descC.dispose();
+    fotoC.dispose();
 
     if (ok == true) {
       _snack('Prestação de contas publicada! 🧾', _verde);

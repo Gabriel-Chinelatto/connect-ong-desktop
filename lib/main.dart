@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'screens/auth/login_screen.dart';
 import 'theme/app_theme.dart';
 import 'config/config_controller.dart';
+import 'services/api_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Carrega o token de acesso (no-op por enquanto: sem persistencia em disco).
+  await ApiService.carregarToken();
   runApp(const ConnectONGApp());
 }
 

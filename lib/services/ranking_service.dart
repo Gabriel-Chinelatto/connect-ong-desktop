@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -11,8 +12,13 @@ class RankingService {
   /// Busca o ranking de transparencia das ONGs (GET /publico/ranking?limite=N),
   /// ja ordenado por score decrescente pelo backend.
   Future<List<RankingOng>> listar({int limite = 20}) async {
-    final response =
-        await http.get(Uri.parse('$_base/ranking?limite=$limite'));
+    // Timeout de 10s para nao travar a UI se o servidor nao responder.
+    final response = await http
+        .get(
+          Uri.parse('$_base/ranking?limite=$limite'),
+          headers: ApiService.authHeaders(),
+        )
+        .timeout(const Duration(seconds: 10));
     if (response.statusCode == 200) {
       final raw = jsonDecode(utf8.decode(response.bodyBytes));
       if (raw is List) {

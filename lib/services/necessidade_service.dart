@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -14,9 +15,10 @@ class NecessidadeService {
     required bool urgente,
     required int ongId,
   }) async {
+    // Timeout de 10s para nao travar a UI se o servidor nao responder.
     final response = await http.post(
       Uri.parse('${ApiService.baseUrl}/necessidades'),
-      headers: {'Content-Type': 'application/json'},
+      headers: ApiService.jsonHeaders(),
       body: jsonEncode({
         'titulo': titulo,
         'descricao': descricao,
@@ -24,7 +26,7 @@ class NecessidadeService {
         'urgente': urgente,
         'ongId': ongId,
       }),
-    );
+    ).timeout(const Duration(seconds: 10));
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
@@ -36,7 +38,8 @@ class NecessidadeService {
   Future<List<Necessidade>> listarPorOng(int ongId) async {
     final response = await http.get(
       Uri.parse('${ApiService.baseUrl}/necessidades?ongId=$ongId'),
-    );
+      headers: ApiService.authHeaders(),
+    ).timeout(const Duration(seconds: 10));
 
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar necessidades');

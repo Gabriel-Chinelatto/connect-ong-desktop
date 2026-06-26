@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -11,7 +12,13 @@ class ConquistaService {
   /// Busca a lista completa de conquistas da ONG
   /// (GET /conquistas/ong/{ongId}), incluindo as ainda nao conquistadas.
   Future<List<Conquista>> ong(int ongId) async {
-    final response = await http.get(Uri.parse('$_base/ong/$ongId'));
+    // Timeout de 10s para nao travar a UI se o servidor nao responder.
+    final response = await http
+        .get(
+          Uri.parse('$_base/ong/$ongId'),
+          headers: ApiService.authHeaders(),
+        )
+        .timeout(const Duration(seconds: 10));
     if (response.statusCode == 200) {
       final raw = jsonDecode(utf8.decode(response.bodyBytes));
       if (raw is List) {

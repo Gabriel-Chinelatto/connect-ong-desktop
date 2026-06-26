@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -10,7 +11,13 @@ class PerfilPublicoService {
 
   /// Busca o perfil publico completo de uma ONG (GET /ongs/{id}/perfil-publico).
   Future<PerfilPublicoOng> buscar(int ongId) async {
-    final response = await http.get(Uri.parse('$_base/$ongId/perfil-publico'));
+    // Timeout de 10s para nao travar a UI se o servidor nao responder.
+    final response = await http
+        .get(
+          Uri.parse('$_base/$ongId/perfil-publico'),
+          headers: ApiService.authHeaders(),
+        )
+        .timeout(const Duration(seconds: 10));
     if (response.statusCode == 200) {
       return PerfilPublicoOng.fromJson(
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>);

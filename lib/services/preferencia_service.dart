@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -7,9 +8,11 @@ import 'api_service.dart';
 
 class PreferenciaService {
   Future<Preferencia> obter(int usuarioId) async {
+    // Timeout de 10s para nao travar a UI se o servidor nao responder.
     final response = await http.get(
       Uri.parse('${ApiService.baseUrl}/usuarios/$usuarioId/preferencias'),
-    );
+      headers: ApiService.authHeaders(),
+    ).timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar preferências');
     }
@@ -19,9 +22,9 @@ class PreferenciaService {
   Future<void> salvar(int usuarioId, Preferencia prefs) async {
     final response = await http.put(
       Uri.parse('${ApiService.baseUrl}/usuarios/$usuarioId/preferencias'),
-      headers: {'Content-Type': 'application/json'},
+      headers: ApiService.jsonHeaders(),
       body: jsonEncode(prefs.toJson()),
-    );
+    ).timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) {
       throw Exception('Erro ao salvar preferências');
     }

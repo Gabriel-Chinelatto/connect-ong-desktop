@@ -333,5 +333,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
         ],
       ),
     );
+
+    // Libera os controllers depois que o dialogo fecha (evita vazamento).
+    atual.dispose();
+    nova.dispose();
   }
 }

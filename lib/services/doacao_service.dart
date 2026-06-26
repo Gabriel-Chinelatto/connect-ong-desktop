@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -15,12 +16,14 @@ class DoacaoService {
 
     try {
 
+      // Timeout de 10s; o TimeoutException cai no catch abaixo.
       final response = await http.get(
 
         Uri.parse(
           '${ApiService.baseUrl}/doacoes',
         ),
-      );
+        headers: ApiService.authHeaders(),
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
 
@@ -57,15 +60,14 @@ class DoacaoService {
 
     try {
 
+      // Timeout de 10s; o TimeoutException cai no catch abaixo.
       final response = await http.post(
 
         Uri.parse(
           '${ApiService.baseUrl}/doacoes',
         ),
 
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: ApiService.jsonHeaders(),
 
         body: jsonEncode({
 
@@ -79,7 +81,7 @@ class DoacaoService {
           'novo': true,
 
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       return response.statusCode == 200
           || response.statusCode == 201;

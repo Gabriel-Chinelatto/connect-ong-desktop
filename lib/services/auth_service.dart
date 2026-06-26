@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -12,6 +13,7 @@ class AuthService {
     String senha,
   ) async {
     try {
+      // Timeout de 10s; o TimeoutException cai no catch abaixo (retorna null).
       final response = await http.post(
         Uri.parse('${ApiService.baseUrl}/usuarios/login'),
         headers: {'Content-Type': 'application/json'},
@@ -19,11 +21,14 @@ class AuthService {
           'email': email,
           'senha': senha,
         }),
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        return jsonDecode(utf8.decode(response.bodyBytes))
+        final dados = jsonDecode(utf8.decode(response.bodyBytes))
             as Map<String, dynamic>;
+        // Captura o token JWT retornado pelo login para as proximas chamadas.
+        await ApiService.setToken(dados['accessToken'] as String?);
+        return dados;
       }
       return null;
     } catch (e) {

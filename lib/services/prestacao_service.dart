@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -12,16 +13,17 @@ class PrestacaoService {
     required String descricao,
     required String fotoUrl,
   }) async {
+    // Timeout de 10s para nao travar a UI se o servidor nao responder.
     final response = await http.post(
       Uri.parse('${ApiService.baseUrl}/prestacoes'),
-      headers: {'Content-Type': 'application/json'},
+      headers: ApiService.jsonHeaders(),
       body: jsonEncode({
         'interesseId': interesseId,
         'titulo': titulo,
         'descricao': descricao,
         'fotoUrl': fotoUrl,
       }),
-    );
+    ).timeout(const Duration(seconds: 10));
     if (response.statusCode != 200 && response.statusCode != 201) {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
       throw Exception(body['erro'] ?? 'Erro ao publicar prestação de contas');
