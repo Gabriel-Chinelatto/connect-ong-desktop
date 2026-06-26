@@ -1,30 +1,29 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:connect_ong/main.dart';
+import 'package:connect_ong/models/ong.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const ConnectONGApp());
+  group('Ong.fromJson', () {
+    test('le os campos da resposta da API', () {
+      final ong = Ong.fromJson({
+        'id': 3,
+        'nome': 'Casa do Bem',
+        'email': 'casa@bem.org',
+        'cidade': 'Campinas',
+      });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      expect(ong.id, 3);
+      expect(ong.nome, 'Casa do Bem');
+      expect(ong.email, 'casa@bem.org');
+      expect(ong.cidade, 'Campinas');
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    test('usa defaults quando campos de texto vem nulos', () {
+      final ong = Ong.fromJson({'id': 1});
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+      expect(ong.id, 1);
+      expect(ong.nome, '');
+      expect(ong.email, '');
+      expect(ong.cidade, '');
+    });
   });
 }
