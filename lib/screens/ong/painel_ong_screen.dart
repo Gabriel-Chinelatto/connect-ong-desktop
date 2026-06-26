@@ -17,6 +17,7 @@ import 'configuracoes_screen.dart';
 import 'perfil_publico_ong_screen.dart';
 import 'mural_impacto_screen.dart';
 import 'ranking_transparencia_screen.dart';
+import 'conquistas_screen.dart';
 import 'perfil_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../config/config_controller.dart';
@@ -378,6 +379,16 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                 context,
                 MaterialPageRoute(
                   builder: (_) => const RankingTransparenciaScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.emoji_events_outlined),
+            ),
+            IconButton(
+              tooltip: 'Conquistas',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ConquistasScreen(ongId: widget.ong.id),
                 ),
               ),
               icon: const Icon(Icons.emoji_events_outlined),
