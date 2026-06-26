@@ -4,11 +4,13 @@ import '../../models/ong.dart';
 import '../../models/necessidade.dart';
 import '../../models/interesse.dart';
 import '../../models/campanha.dart';
+import '../../models/atividade.dart';
 import '../../services/ong_service.dart';
 import '../../services/necessidade_service.dart';
 import '../../services/interesse_service.dart';
 import '../../services/prestacao_service.dart';
 import '../../services/campanha_service.dart';
+import '../../services/atividade_service.dart';
 import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
 import 'configuracoes_screen.dart';
@@ -170,10 +172,12 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   final NecessidadeService _necessidadeService = NecessidadeService();
   final InteresseService _interesseService = InteresseService();
   final CampanhaService _campanhaService = CampanhaService();
+  final AtividadeService _atividadeService = AtividadeService();
 
   List<Necessidade> _necessidades = [];
   List<Interesse> _interesses = [];
   List<Campanha> _campanhas = [];
+  List<Atividade> _atividades = [];
   bool _carregando = true;
 
   @override
@@ -188,11 +192,20 @@ class _PainelConteudoState extends State<_PainelConteudo> {
       final nec = await _necessidadeService.listarPorOng(widget.ong.id);
       final ints = await _interesseService.listarPorOng(widget.ong.id);
       final camps = await _campanhaService.listarPorOng(widget.ong.id);
+      // Feed global da plataforma — best-effort: se falhar, o painel
+      // continua funcionando com a timeline vazia.
+      List<Atividade> ativs = [];
+      try {
+        ativs = await _atividadeService.listarRecentes();
+      } catch (_) {
+        ativs = [];
+      }
       if (!mounted) return;
       setState(() {
         _necessidades = nec;
         _interesses = ints;
         _campanhas = camps;
+        _atividades = ativs;
         _carregando = false;
       });
     } catch (e) {
@@ -340,7 +353,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: Text('Painel — ${widget.ong.nome}'),
@@ -376,6 +389,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               Tab(text: 'Necessidades (${_necessidades.length})'),
               Tab(text: 'Interesses (${_interesses.length})'),
               Tab(text: 'Campanhas (${_campanhas.length})'),
+              Tab(text: 'Atividades (${_atividades.length})'),
             ],
           ),
         ),
@@ -396,6 +410,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                         _abaNecessidades(),
                         _abaInteresses(),
                         _abaCampanhas(),
+                        _abaTimeline(),
                       ],
                     ),
                   ),
@@ -704,6 +719,98 @@ class _PainelConteudoState extends State<_PainelConteudo> {
         ),
       ),
     );
+  }
+
+  // ---- ABA 4: timeline (feed global de atividades da plataforma) ----
+  Widget _abaTimeline() {
+    if (_atividades.isEmpty) {
+      return const Center(
+        child: Text(
+          'Nenhuma atividade recente na plataforma.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: _atividades.length,
+      itemBuilder: (context, i) => _cardAtividade(_atividades[i]),
+    );
+  }
+
+  Widget _cardAtividade(Atividade a) {
+    final tempo = _tempoRelativo(a.dataCriacao);
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: _verde.withValues(alpha: 0.12),
+              child: Icon(_iconeAtividade(a.tipo), color: _verde, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(a.descricao,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
+                  if (a.ongNome != null && a.ongNome!.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(a.ongNome!,
+                        style: const TextStyle(fontSize: 13, color: _verde)),
+                  ],
+                  if (tempo.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(tempo,
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade600)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _iconeAtividade(String tipo) {
+    switch (tipo) {
+      case 'NECESSIDADE':
+        return Icons.favorite_outline;
+      case 'INTERESSE':
+        return Icons.volunteer_activism;
+      case 'PRESTACAO':
+        return Icons.receipt_long_outlined;
+      case 'CAMPANHA':
+        return Icons.campaign_outlined;
+      case 'DOACAO':
+        return Icons.attach_money;
+      case 'AVALIACAO':
+        return Icons.star_outline;
+      default:
+        return Icons.notifications_none;
+    }
+  }
+
+  /// Converte a dataCriacao ISO em tempo relativo amigavel.
+  /// Retorna vazio se a data for nula ou invalida.
+  String _tempoRelativo(String? dataIso) {
+    if (dataIso == null) return '';
+    final data = DateTime.tryParse(dataIso);
+    if (data == null) return '';
+    final diff = DateTime.now().difference(data);
+    if (diff.isNegative || diff.inMinutes < 1) return 'agora';
+    if (diff.inMinutes < 60) return 'há ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'há ${diff.inHours} h';
+    return 'há ${diff.inDays} d';
   }
 
   Widget _statusBadge(String status) {
