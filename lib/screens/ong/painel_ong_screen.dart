@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 
 import '../../models/ong.dart';
 import '../../models/necessidade.dart';
@@ -11,6 +12,8 @@ import '../../services/interesse_service.dart';
 import '../../services/prestacao_service.dart';
 import '../../services/campanha_service.dart';
 import '../../services/atividade_service.dart';
+import '../../services/perfil_publico_service.dart';
+import '../../services/relatorio_pdf_service.dart';
 import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
 import 'configuracoes_screen.dart';
@@ -229,6 +232,20 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     );
   }
 
+  /// Bloco 30: gera e abre o relatorio em PDF da ONG.
+  Future<void> _gerarRelatorioPdf() async {
+    _snack('Gerando relatório PDF...', _verde);
+    try {
+      final p = await PerfilPublicoService().buscar(widget.ong.id);
+      final bytes = await RelatorioPdfService.relatorioOng(p);
+      if (!mounted) return;
+      await Printing.layoutPdf(onLayout: (format) async => bytes);
+    } catch (e) {
+      if (!mounted) return;
+      _snack('Erro ao gerar relatório PDF', Colors.red);
+    }
+  }
+
   Future<void> _aceitar(Interesse i) async {
     try {
       await _interesseService.aceitar(i.id);
@@ -363,6 +380,11 @@ class _PainelConteudoState extends State<_PainelConteudo> {
           title: Text('Painel — ${widget.ong.nome}'),
           actions: [
             const NotificacaoBell(),
+            IconButton(
+              tooltip: 'Relatorio PDF',
+              onPressed: _gerarRelatorioPdf,
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+            ),
             IconButton(
               tooltip: 'Mural de Impacto',
               onPressed: () => Navigator.push(
