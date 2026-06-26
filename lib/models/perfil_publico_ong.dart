@@ -14,6 +14,8 @@ class PerfilPublicoOng {
   final int totalNecessidades;
   final int totalCampanhas;
   final int totalPrestacoes;
+  final int transparenciaScore;
+  final String nivelTransparencia;
   final List<NecessidadeResumo> necessidades;
   final List<CampanhaResumo> campanhas;
   final List<AvaliacaoResumo> avaliacoes;
@@ -33,6 +35,8 @@ class PerfilPublicoOng {
     required this.totalNecessidades,
     required this.totalCampanhas,
     required this.totalPrestacoes,
+    required this.transparenciaScore,
+    required this.nivelTransparencia,
     required this.necessidades,
     required this.campanhas,
     required this.avaliacoes,
@@ -62,6 +66,8 @@ class PerfilPublicoOng {
       totalNecessidades: (j['totalNecessidades'] ?? 0) as int,
       totalCampanhas: (j['totalCampanhas'] ?? 0) as int,
       totalPrestacoes: (j['totalPrestacoes'] ?? 0) as int,
+      transparenciaScore: (j['transparenciaScore'] ?? 0) as int,
+      nivelTransparencia: j['nivelTransparencia'] ?? 'BRONZE',
       necessidades: lista('necessidades', NecessidadeResumo.fromJson),
       campanhas: lista('campanhas', CampanhaResumo.fromJson),
       avaliacoes: lista('avaliacoes', AvaliacaoResumo.fromJson),

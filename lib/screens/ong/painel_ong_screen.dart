@@ -16,6 +16,7 @@ import 'chat_ong_screen.dart';
 import 'configuracoes_screen.dart';
 import 'perfil_publico_ong_screen.dart';
 import 'mural_impacto_screen.dart';
+import 'ranking_transparencia_screen.dart';
 import 'perfil_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../config/config_controller.dart';
@@ -370,6 +371,16 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                 ),
               ),
               icon: const Icon(Icons.public),
+            ),
+            IconButton(
+              tooltip: 'Ranking de Transparencia',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const RankingTransparenciaScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.emoji_events_outlined),
             ),
             IconButton(
               tooltip: 'Ver meu perfil publico',

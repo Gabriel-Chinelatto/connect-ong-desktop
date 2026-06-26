@@ -198,6 +198,8 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
                           : 'Sem avaliacoes'),
                     ],
                   ),
+                  const SizedBox(height: 8),
+                  _chipTransparencia(p),
                 ],
               ),
             ),
@@ -205,6 +207,52 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
         ),
       ),
     );
+  }
+
+  Widget _chipTransparencia(PerfilPublicoOng p) {
+    final cor = _corNivel(p.nivelTransparencia);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: cor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.workspace_premium, color: cor, size: 18),
+          const SizedBox(width: 6),
+          Text(
+            'Transparencia: ${_rotuloNivel(p.nivelTransparencia)} '
+            '(${p.transparenciaScore})',
+            style: TextStyle(
+                color: cor, fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _corNivel(String nivel) {
+    switch (nivel.toUpperCase()) {
+      case 'OURO':
+        return const Color(0xFFF59E0B);
+      case 'PRATA':
+        return const Color(0xFF9CA3AF);
+      default:
+        return const Color(0xFFCD7F32);
+    }
+  }
+
+  String _rotuloNivel(String nivel) {
+    switch (nivel.toUpperCase()) {
+      case 'OURO':
+        return 'Ouro';
+      case 'PRATA':
+        return 'Prata';
+      default:
+        return 'Bronze';
+    }
   }
 
   Widget _stats(PerfilPublicoOng p) {
