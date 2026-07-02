@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../services/estatistica_service.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/feedback/empty_state.dart';
 
 /// Mural de Impacto: numeros coletivos da plataforma (transparencia).
 /// Reaproveita GET /publico/estatisticas.
@@ -52,7 +53,6 @@ class _MuralImpactoScreenState extends State<MuralImpactoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Mural de Impacto'),
         backgroundColor: AppColors.primary,
@@ -83,17 +83,12 @@ class _MuralImpactoScreenState extends State<MuralImpactoScreen> {
   }
 
   Widget _vazio() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.grey),
-          const SizedBox(height: 12),
-          const Text('Nao foi possivel carregar o impacto'),
-          const SizedBox(height: 8),
-          TextButton(onPressed: _carregar, child: const Text('Tentar de novo')),
-        ],
-      ),
+    return EmptyState(
+      icone: Icons.cloud_off_outlined,
+      mensagem: 'Não foi possível carregar o impacto',
+      detalhe: 'Verifique sua conexão e tente novamente.',
+      acaoRotulo: 'Tentar de novo',
+      onAcao: _carregar,
     );
   }
 
@@ -155,7 +150,7 @@ class _MuralImpactoScreenState extends State<MuralImpactoScreen> {
                     fontWeight: FontWeight.w800,
                     color: AppColors.primary)),
             const Text('pessoas alcancadas (estimativa)',
-                style: TextStyle(color: Colors.grey)),
+                style: TextStyle(color: AppColors.textSecondary)),
           ],
         ),
       ),
@@ -205,7 +200,7 @@ class _MuralImpactoScreenState extends State<MuralImpactoScreen> {
             _contador(i.valor,
                 style: const TextStyle(
                     fontSize: 24, fontWeight: FontWeight.bold)),
-            Text(i.label, style: const TextStyle(color: Colors.grey)),
+            Text(i.label, style: const TextStyle(color: AppColors.textSecondary)),
           ],
         ),
       ),
@@ -227,7 +222,7 @@ class _MuralImpactoScreenState extends State<MuralImpactoScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Total doado via PIX',
-                    style: TextStyle(color: Colors.grey)),
+                    style: TextStyle(color: AppColors.textSecondary)),
                 Text('R\$ ${_stats.valorTotalDoado.toStringAsFixed(2)}',
                     style: const TextStyle(
                         fontSize: 22,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../config/config_controller.dart';
+import '../../services/api_service.dart';
 import '../../services/perfil_service.dart';
 import '../../theme/app_colors.dart';
 
@@ -96,8 +97,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
       setState(() => _salvando = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
+          content: Text(ApiService.mensagemAmigavel(e)),
+          backgroundColor: AppColors.error,
         ),
       );
     }

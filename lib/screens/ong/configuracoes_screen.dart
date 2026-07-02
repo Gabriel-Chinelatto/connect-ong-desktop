@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/config_controller.dart';
 import '../../models/preferencia.dart';
+import '../../services/api_service.dart';
 import '../../services/demo_service.dart';
 import '../../services/perfil_service.dart';
 import '../../theme/app_colors.dart';
@@ -202,8 +203,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
+          content: Text(ApiService.mensagemAmigavel(e)),
+          backgroundColor: AppColors.error,
         ),
       );
     } finally {
@@ -326,9 +327,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                 if (!dialogContext.mounted) return;
                 ScaffoldMessenger.of(dialogContext).showSnackBar(
                   SnackBar(
-                    content:
-                        Text(e.toString().replaceFirst('Exception: ', '')),
-                    backgroundColor: Colors.red,
+                    content: Text(ApiService.mensagemAmigavel(e)),
+                    backgroundColor: AppColors.error,
                   ),
                 );
               }

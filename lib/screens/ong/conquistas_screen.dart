@@ -141,7 +141,9 @@ class _ConquistasScreenState extends State<ConquistasScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: Colors.grey),
+          Icon(icon,
+              size: 64,
+              color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(height: 12),
           Text(texto),
           const SizedBox(height: 8),
@@ -152,8 +154,9 @@ class _ConquistasScreenState extends State<ConquistasScreen> {
   }
 
   Widget _cartao(Conquista c) {
+    final cs = Theme.of(context).colorScheme;
     final feita = c.conquistada;
-    final corIcone = feita ? AppColors.primary : Colors.grey.shade400;
+    final corIcone = feita ? AppColors.primary : cs.onSurfaceVariant;
     return Card(
       child: Opacity(
         opacity: feita ? 1.0 : 0.6,
@@ -183,7 +186,7 @@ class _ConquistasScreenState extends State<ConquistasScreen> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
-                  color: feita ? AppColors.textPrimary : Colors.grey.shade600,
+                  color: feita ? cs.onSurface : cs.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: 6),
@@ -195,7 +198,7 @@ class _ConquistasScreenState extends State<ConquistasScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey.shade600,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -203,7 +206,7 @@ class _ConquistasScreenState extends State<ConquistasScreen> {
               Icon(
                 feita ? Icons.check_circle : Icons.lock_outline,
                 size: 18,
-                color: feita ? AppColors.primary : Colors.grey.shade400,
+                color: feita ? AppColors.primary : cs.onSurfaceVariant,
               ),
             ],
           ),

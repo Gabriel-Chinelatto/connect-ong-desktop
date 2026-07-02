@@ -77,7 +77,6 @@ class _RankingTransparenciaScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Ranking de Transparencia'),
         backgroundColor: AppColors.primary,
@@ -110,7 +109,9 @@ class _RankingTransparenciaScreenState
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: Colors.grey),
+          Icon(icon,
+              size: 64,
+              color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(height: 12),
           Text(texto),
           const SizedBox(height: 8),
@@ -158,8 +159,8 @@ class _RankingTransparenciaScreenState
                   ),
                   const SizedBox(height: 2),
                   Text(o.cidade,
-                      style: TextStyle(
-                          color: Colors.grey.shade700, fontSize: 13)),
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13)),
                 ],
               ),
             ),

@@ -86,9 +86,13 @@ class _NotificacoesScreenState extends State<NotificacoesScreen> {
           child: _carregando
               ? const Center(child: CircularProgressIndicator())
               : _itens.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Text('Nenhuma notificação ainda.',
-                          style: TextStyle(fontSize: 16, color: Colors.grey)),
+                          style: TextStyle(
+                              fontSize: 16,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
                     )
                   : ListView.separated(
                       itemCount: _itens.length,

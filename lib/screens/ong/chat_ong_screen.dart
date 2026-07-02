@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/mensagem.dart';
 import '../../services/mensagem_service.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 
 const Color _verde = AppColors.primary;
@@ -98,8 +99,8 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: Colors.red,
+            content: Text(ApiService.mensagemAmigavel(e)),
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -110,6 +111,7 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
 
   Widget _bolha(Mensagem m) {
     final minha = m.remetente == _meuRemetente;
+    final cs = Theme.of(context).colorScheme;
     return Align(
       alignment: minha ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -117,7 +119,7 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: minha ? _verde : Colors.grey.shade200,
+          color: minha ? _verde : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -128,7 +130,7 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
         child: Text(
           m.conteudo,
           style: TextStyle(
-            color: minha ? Colors.white : Colors.black87,
+            color: minha ? Colors.white : cs.onSurface,
             height: 1.3,
           ),
         ),
@@ -149,12 +151,15 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
                 child: _carregando
                     ? const Center(child: CircularProgressIndicator())
                     : _mensagens.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
                               'Nenhuma mensagem ainda.\nDiga olá ao doador! 👋',
                               textAlign: TextAlign.center,
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 16),
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                  fontSize: 16),
                             ),
                           )
                         : ListView.builder(
@@ -184,6 +189,7 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
                       radius: 24,
                       backgroundColor: _verde,
                       child: IconButton(
+                        tooltip: 'Enviar mensagem',
                         icon: _enviando
                             ? const SizedBox(
                                 width: 18,
