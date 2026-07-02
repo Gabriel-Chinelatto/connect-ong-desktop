@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
 
 import '../../models/ong.dart';
@@ -24,8 +25,10 @@ import 'ranking_transparencia_screen.dart';
 import 'conquistas_screen.dart';
 import 'perfil_screen.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/categorias.dart';
 import '../../config/config_controller.dart';
 import '../../widgets/notificacao_bell.dart';
+import '../../widgets/feedback/empty_state.dart';
 
 const Color _verde = AppColors.primary;
 
@@ -54,6 +57,7 @@ class _PainelOngScreenState extends State<PainelOngScreen> {
   Ong? _ong;
   List<Ong> _todasOngs = [];
   bool _carregando = true;
+  bool _erro = false;
 
   @override
   void initState() {
@@ -62,7 +66,10 @@ class _PainelOngScreenState extends State<PainelOngScreen> {
   }
 
   Future<void> _resolverOng() async {
-    setState(() => _carregando = true);
+    setState(() {
+      _carregando = true;
+      _erro = false;
+    });
 
     // Caminho direto: o login ja trouxe o ongId vinculado ao perfil.
     if (widget.ongId != null) {
@@ -97,7 +104,12 @@ class _PainelOngScreenState extends State<PainelOngScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() => _carregando = false);
+      // Falha de rede ao resolver a ONG: mostra tela de erro com "Tentar de
+      // novo" em vez de cair no seletor vazio (estado enganoso).
+      setState(() {
+        _carregando = false;
+        _erro = true;
+      });
     }
   }
 
@@ -117,10 +129,27 @@ class _PainelOngScreenState extends State<PainelOngScreen> {
       return const Scaffold(
           body: Center(child: CircularProgressIndicator()));
     }
+    if (_erro) {
+      return _buildErro();
+    }
     if (_ong == null) {
       return _buildSeletor();
     }
     return _PainelConteudo(ong: _ong!, onLogout: _logout);
+  }
+
+  // Tela de falha ao carregar a ONG, com acao para tentar novamente.
+  Widget _buildErro() {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Painel')),
+      body: EmptyState(
+        icone: Icons.cloud_off_outlined,
+        mensagem: 'Não foi possível carregar',
+        detalhe: 'Verifique sua conexão e tente novamente.',
+        acaoRotulo: 'Tentar de novo',
+        onAcao: _resolverOng,
+      ),
+    );
   }
 
   // Mostrado quando o email do login nao corresponde a nenhuma ONG.
@@ -199,9 +228,16 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   Future<void> _carregarTudo() async {
     setState(() => _carregando = true);
     try {
-      final nec = await _necessidadeService.listarPorOng(widget.ong.id);
-      final ints = await _interesseService.listarPorOng(widget.ong.id);
-      final camps = await _campanhaService.listarPorOng(widget.ong.id);
+      // Carrega as tres listas essenciais em paralelo (mais rapido que 3 awaits
+      // sequenciais). O feed global e best-effort e vem depois.
+      final resultados = await Future.wait([
+        _necessidadeService.listarPorOng(widget.ong.id),
+        _interesseService.listarPorOng(widget.ong.id),
+        _campanhaService.listarPorOng(widget.ong.id),
+      ]);
+      final nec = resultados[0] as List<Necessidade>;
+      final ints = resultados[1] as List<Interesse>;
+      final camps = resultados[2] as List<Campanha>;
       // Feed global da plataforma — best-effort: se falhar, o painel
       // continua funcionando com a timeline vazia.
       List<Atividade> ativs = [];
@@ -317,6 +353,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
             children: [
               TextField(
                 controller: tituloC,
+                autofocus: true,
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(labelText: 'Título'),
               ),
               const SizedBox(height: 12),
@@ -342,7 +380,16 @@ class _PainelConteudoState extends State<_PainelConteudo> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (tituloC.text.trim().isEmpty) return;
+              // Sem titulo o botao parecia "morto": agora avisa o usuario.
+              if (tituloC.text.trim().isEmpty) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Informe um título para a prestação de contas.'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+                return;
+              }
               try {
                 await PrestacaoService().criar(
                   interesseId: it.id,
@@ -356,9 +403,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                 if (!dialogContext.mounted) return;
                 ScaffoldMessenger.of(dialogContext).showSnackBar(
                   SnackBar(
-                    content:
-                        Text(e.toString().replaceFirst('Exception: ', '')),
-                    backgroundColor: Colors.red,
+                    content: Text(ApiService.mensagemAmigavel(e)),
+                    backgroundColor: AppColors.error,
                   ),
                 );
               }
@@ -411,7 +457,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                   builder: (_) => const RankingTransparenciaScreen(),
                 ),
               ),
-              icon: const Icon(Icons.emoji_events_outlined),
+              icon: const Icon(Icons.leaderboard_outlined),
             ),
             IconButton(
               tooltip: 'Conquistas',
@@ -519,11 +565,12 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   }
 
   Widget _statMini(IconData icone, String numero, String rotulo, Color cor) {
+    final cs = Theme.of(context).colorScheme;
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -551,8 +598,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                     style: const TextStyle(
                         fontSize: 22, fontWeight: FontWeight.bold)),
                 Text(rotulo,
-                    style: TextStyle(
-                        color: Colors.grey.shade600, fontSize: 12)),
+                    style: const TextStyle(
+                        color: AppColors.textSecondary, fontSize: 12)),
               ],
             ),
           ],
@@ -564,12 +611,10 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   // ---- ABA 1: necessidades publicadas ----
   Widget _abaNecessidades() {
     if (_necessidades.isEmpty) {
-      return const Center(
-        child: Text(
-          'Nenhuma necessidade publicada ainda.\nClique em "Publicar necessidade".',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.grey),
-        ),
+      return const EmptyState(
+        icone: Icons.campaign_outlined,
+        mensagem: 'Nenhuma necessidade publicada ainda',
+        detalhe: 'Clique em "Publicar necessidade" para começar.',
       );
     }
     return ListView.builder(
@@ -594,7 +639,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                     labelStyle: TextStyle(color: Colors.red.shade700),
                   )
                 : Text(n.status,
-                    style: TextStyle(color: Colors.grey.shade600)),
+                    style: const TextStyle(color: AppColors.textSecondary)),
           ),
         );
       },
@@ -604,11 +649,10 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   // ---- ABA 2: interesses recebidos ----
   Widget _abaInteresses() {
     if (_interesses.isEmpty) {
-      return const Center(
-        child: Text(
-          'Nenhum interesse recebido ainda.',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
-        ),
+      return const EmptyState(
+        icone: Icons.people_outline,
+        mensagem: 'Nenhum interesse recebido ainda',
+        detalhe: 'Assim que um doador se interessar, aparece aqui.',
       );
     }
     return ListView.builder(
@@ -638,7 +682,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                               const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 2),
                       Text('Interesse em: ${it.necessidadeTitulo ?? "-"}',
-                          style: TextStyle(color: Colors.grey.shade700)),
+                          style: const TextStyle(color: AppColors.textSecondary)),
                     ],
                   ),
                 ),
@@ -712,12 +756,10 @@ class _PainelConteudoState extends State<_PainelConteudo> {
         ),
         Expanded(
           child: _campanhas.isEmpty
-              ? const Center(
-                  child: Text(
-                    'Nenhuma campanha criada ainda.\nClique em "Nova campanha".',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
+              ? const EmptyState(
+                  icone: Icons.volunteer_activism_outlined,
+                  mensagem: 'Nenhuma campanha criada ainda',
+                  detalhe: 'Clique em "Nova campanha" para arrecadar.',
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(20),
@@ -754,11 +796,14 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text('Encerrada',
-                        style: TextStyle(fontSize: 12, color: Colors.black54)),
+                    child: Text('Encerrada',
+                        style: TextStyle(
+                            fontSize: 12,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant)),
                   )
                 else
                   TextButton(
@@ -768,14 +813,16 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               ],
             ),
             const SizedBox(height: 6),
-            Text(c.descricao, style: TextStyle(color: Colors.grey.shade700)),
+            Text(c.descricao,
+                style: const TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: 14),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
                 value: c.progresso / 100,
                 minHeight: 10,
-                backgroundColor: Colors.grey.shade200,
+                backgroundColor:
+                    Theme.of(context).colorScheme.surfaceContainerHighest,
                 valueColor: const AlwaysStoppedAnimation<Color>(_verde),
               ),
             ),
@@ -801,12 +848,9 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   // ---- ABA 4: timeline (feed global de atividades da plataforma) ----
   Widget _abaTimeline() {
     if (_atividades.isEmpty) {
-      return const Center(
-        child: Text(
-          'Nenhuma atividade recente na plataforma.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.grey),
-        ),
+      return const EmptyState(
+        icone: Icons.timeline_outlined,
+        mensagem: 'Nenhuma atividade recente na plataforma',
       );
     }
     return ListView.builder(
@@ -846,8 +890,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                   if (tempo.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(tempo,
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade600)),
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
                   ],
                 ],
               ),
@@ -923,7 +967,8 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
   final _formKey = GlobalKey<FormState>();
   final _tituloController = TextEditingController();
   final _descricaoController = TextEditingController();
-  final _categoriaController = TextEditingController();
+  // Categoria canonica (mesma lista do mobile e do backend).
+  String _categoria = Categorias.todas.first.valor;
   bool _urgente = false;
   bool _enviando = false;
 
@@ -933,7 +978,6 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
   void dispose() {
     _tituloController.dispose();
     _descricaoController.dispose();
-    _categoriaController.dispose();
     super.dispose();
   }
 
@@ -944,7 +988,7 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
       await _service.criar(
         titulo: _tituloController.text.trim(),
         descricao: _descricaoController.text.trim(),
-        categoria: _categoriaController.text.trim(),
+        categoria: _categoria,
         urgente: _urgente,
         ongId: widget.ongId,
       );
@@ -955,8 +999,8 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
       setState(() => _enviando = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
+          content: Text(ApiService.mensagemAmigavel(e)),
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -976,6 +1020,8 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
               children: [
                 TextFormField(
                   controller: _tituloController,
+                  autofocus: true,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(labelText: 'Título'),
                   validator: (v) =>
                       (v == null || v.trim().isEmpty) ? 'Informe o título' : null,
@@ -985,12 +1031,29 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
                   controller: _descricaoController,
                   decoration: const InputDecoration(labelText: 'Descrição'),
                   maxLines: 3,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Informe a descrição'
+                      : null,
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _categoriaController,
-                  decoration: const InputDecoration(
-                      labelText: 'Categoria (ex.: Alimento, Roupa)'),
+                DropdownButtonFormField<String>(
+                  initialValue: _categoria,
+                  decoration: const InputDecoration(labelText: 'Categoria'),
+                  items: [
+                    for (final c in Categorias.todas)
+                      DropdownMenuItem(
+                        value: c.valor,
+                        child: Row(
+                          children: [
+                            Icon(c.icone, size: 18, color: c.cor),
+                            const SizedBox(width: 8),
+                            Text(c.rotulo),
+                          ],
+                        ),
+                      ),
+                  ],
+                  onChanged: (v) =>
+                      setState(() => _categoria = v ?? _categoria),
                 ),
                 const SizedBox(height: 8),
                 SwitchListTile(
@@ -1042,7 +1105,8 @@ class _FormCampanhaState extends State<_FormCampanha> {
   final _formKey = GlobalKey<FormState>();
   final _titulo = TextEditingController();
   final _descricao = TextEditingController();
-  final _categoria = TextEditingController();
+  // Categoria canonica (mesma lista do mobile e do backend).
+  String _categoria = Categorias.todas.first.valor;
   final _meta = TextEditingController();
   bool _destaque = false;
   bool _enviando = false;
@@ -1053,7 +1117,6 @@ class _FormCampanhaState extends State<_FormCampanha> {
   void dispose() {
     _titulo.dispose();
     _descricao.dispose();
-    _categoria.dispose();
     _meta.dispose();
     super.dispose();
   }
@@ -1066,7 +1129,7 @@ class _FormCampanhaState extends State<_FormCampanha> {
         titulo: _titulo.text.trim(),
         descricao: _descricao.text.trim(),
         metaValor: double.parse(_meta.text.replaceAll(',', '.')),
-        categoria: _categoria.text.trim(),
+        categoria: _categoria,
         destaque: _destaque,
         ongId: widget.ongId,
       );
@@ -1077,8 +1140,8 @@ class _FormCampanhaState extends State<_FormCampanha> {
       setState(() => _enviando = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
+          content: Text(ApiService.mensagemAmigavel(e)),
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -1098,6 +1161,8 @@ class _FormCampanhaState extends State<_FormCampanha> {
               children: [
                 TextFormField(
                   controller: _titulo,
+                  autofocus: true,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(labelText: 'Título'),
                   validator: (v) => (v == null || v.trim().length < 3)
                       ? 'Mínimo 3 caracteres'
@@ -1108,11 +1173,18 @@ class _FormCampanhaState extends State<_FormCampanha> {
                   controller: _descricao,
                   maxLines: 3,
                   decoration: const InputDecoration(labelText: 'Descrição'),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Informe a descrição'
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _meta,
-                  keyboardType: TextInputType.number,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                  ],
                   decoration:
                       const InputDecoration(labelText: 'Meta (R\$)'),
                   validator: (v) {
@@ -1123,10 +1195,24 @@ class _FormCampanhaState extends State<_FormCampanha> {
                   },
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _categoria,
-                  decoration: const InputDecoration(
-                      labelText: 'Categoria (ex.: Roupas, Educação)'),
+                DropdownButtonFormField<String>(
+                  initialValue: _categoria,
+                  decoration: const InputDecoration(labelText: 'Categoria'),
+                  items: [
+                    for (final c in Categorias.todas)
+                      DropdownMenuItem(
+                        value: c.valor,
+                        child: Row(
+                          children: [
+                            Icon(c.icone, size: 18, color: c.cor),
+                            const SizedBox(width: 8),
+                            Text(c.rotulo),
+                          ],
+                        ),
+                      ),
+                  ],
+                  onChanged: (v) =>
+                      setState(() => _categoria = v ?? _categoria),
                 ),
                 const SizedBox(height: 8),
                 SwitchListTile(
