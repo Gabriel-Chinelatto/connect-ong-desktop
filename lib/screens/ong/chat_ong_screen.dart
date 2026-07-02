@@ -37,13 +37,25 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
   bool _enviando = false;
   Timer? _timer;
 
+  // Presenca do OUTRO participante (atualizada no mesmo tick do polling).
+  bool _online = false;
+  String? _ultimoVisto;
+  bool _digitando = false;
+
+  // Throttle do heartbeat de digitacao (no maximo 1x a cada 2s).
+  DateTime? _ultimoHeartbeat;
+
   @override
   void initState() {
     super.initState();
     _carregar(primeira: true);
+    _carregarStatus();
     _timer = Timer.periodic(
       const Duration(seconds: 2),
-      (_) => _carregar(),
+      (_) {
+        _carregar();
+        _carregarStatus();
+      },
     );
   }
 
@@ -69,6 +81,42 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
       if (!mounted) return;
       if (primeira) setState(() => _carregando = false);
     }
+  }
+
+  // Atualiza a presenca do outro participante. Best-effort e silencioso:
+  // sem spinner e sem erro visivel; em falha mantem os defaults do service.
+  Future<void> _carregarStatus() async {
+    final s = await _service.status(widget.interesseId);
+    if (!mounted) return;
+    setState(() {
+      _online = (s['online'] ?? false) as bool;
+      _ultimoVisto = s['ultimoVisto'] as String?;
+      _digitando = (s['digitando'] ?? false) as bool;
+    });
+  }
+
+  // Envia o heartbeat de digitacao com throttle de no maximo 1x/2s.
+  void _sinalizarDigitando() {
+    final agora = DateTime.now();
+    if (_ultimoHeartbeat != null &&
+        agora.difference(_ultimoHeartbeat!) < const Duration(seconds: 2)) {
+      return;
+    }
+    _ultimoHeartbeat = agora;
+    _service.digitando(widget.interesseId);
+  }
+
+  // Texto de presenca exibido abaixo do titulo na AppBar.
+  String _textoPresenca() {
+    if (_digitando) return 'digitando...';
+    if (_online) return 'online';
+    if (_ultimoVisto != null) {
+      final dt = DateTime.parse(_ultimoVisto!).toLocal();
+      final hh = dt.hour.toString().padLeft(2, '0');
+      final mm = dt.minute.toString().padLeft(2, '0');
+      return 'visto por último às $hh:$mm';
+    }
+    return '';
   }
 
   void _irParaOFim() {
@@ -130,12 +178,33 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
             bottomRight: Radius.circular(minha ? 4 : 16),
           ),
         ),
-        child: Text(
-          m.conteudo,
-          style: TextStyle(
-            color: minha ? Colors.white : cs.onSurface,
-            height: 1.3,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              m.conteudo,
+              style: TextStyle(
+                color: minha ? Colors.white : cs.onSurface,
+                height: 1.3,
+              ),
+            ),
+            // Check de "visto" apenas nas MINHAS mensagens.
+            if (minha)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Icon(
+                    m.lida ? Icons.done_all : Icons.check,
+                    size: 14,
+                    color: m.lida
+                        ? Colors.lightBlueAccent
+                        : Colors.white70,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -144,7 +213,25 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Conversa — ${widget.titulo}')),
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Conversa — ${widget.titulo}'),
+            if (_textoPresenca().isNotEmpty)
+              Text(
+                _textoPresenca(),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurfaceVariant,
+                ),
+              ),
+          ],
+        ),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -184,6 +271,9 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
                         decoration: const InputDecoration(
                           hintText: 'Mensagem...',
                         ),
+                        onChanged: (texto) {
+                          if (texto.isNotEmpty) _sinalizarDigitando();
+                        },
                         onSubmitted: (_) => _enviar(),
                       ),
                     ),

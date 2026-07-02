@@ -5,6 +5,7 @@ class Mensagem {
   final String remetente; // DOADOR ou ONG
   final String conteudo;
   final String? dataEnvio;
+  final bool lida; // true = ja foi vista pelo outro participante
 
   const Mensagem({
     required this.id,
@@ -12,6 +13,7 @@ class Mensagem {
     required this.conteudo,
     this.interesseId,
     this.dataEnvio,
+    this.lida = false,
   });
 
   factory Mensagem.fromJson(Map<String, dynamic> json) {
@@ -21,6 +23,7 @@ class Mensagem {
       remetente: json['remetente'] ?? '',
       conteudo: json['conteudo'] ?? '',
       dataEnvio: json['dataEnvio'],
+      lida: (json['lida'] ?? false) as bool,
     );
   }
 }

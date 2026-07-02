@@ -49,4 +49,34 @@ class MensagemService {
       throw Exception(body['erro'] ?? 'Erro ao enviar mensagem');
     }
   }
+
+  // Situacao do OUTRO participante (online / ultimo visto / digitando).
+  // Chamar tambem registra a MINHA presenca (heartbeat) no backend.
+  // Best-effort: NUNCA quebra o chat; em qualquer erro devolve default seguro.
+  Future<Map<String, dynamic>> status(int interesseId) async {
+    const seguro = {'online': false, 'ultimoVisto': null, 'digitando': false};
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiService.baseUrl}/mensagens/status?interesseId=$interesseId'),
+        headers: ApiService.authHeaders(),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) return seguro;
+      return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+    } catch (_) {
+      return seguro;
+    }
+  }
+
+  // Sinaliza que estou digitando neste match. Best-effort: ignora erros.
+  Future<void> digitando(int interesseId) async {
+    try {
+      await http.post(
+        Uri.parse('${ApiService.baseUrl}/mensagens/digitando?interesseId=$interesseId'),
+        headers: ApiService.jsonHeaders(),
+      ).timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // Ignora: sinal de digitacao e best-effort.
+    }
+  }
 }
