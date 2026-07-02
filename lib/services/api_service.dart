@@ -1,3 +1,8 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+
 /// Base de toda a comunicacao HTTP com a API Spring Boot.
 ///
 /// Centraliza: a [baseUrl] do backend, o token JWT de acesso (mantido apenas
@@ -6,6 +11,18 @@
 /// o app desktop exige um novo login a cada abertura. Os servicos especificos
 /// reutilizam estes cabecalhos e aplicam um timeout de 10s em cada chamada.
 class ApiService {
+
+  /// Converte qualquer erro capturado em uma mensagem amigavel para o usuario.
+  /// Usar em catches de UI no lugar de expor `e.toString()` cru.
+  static String mensagemAmigavel(Object erro) {
+    if (erro is TimeoutException) {
+      return 'O servidor demorou a responder. Tente novamente.';
+    }
+    if (erro is SocketException || erro is http.ClientException) {
+      return 'Não foi possível conectar ao servidor. Verifique sua conexão.';
+    }
+    return erro.toString().replaceFirst('Exception: ', '');
+  }
 
   static const String baseUrl =
       'http://localhost:8080';
