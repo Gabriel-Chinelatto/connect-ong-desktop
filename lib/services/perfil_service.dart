@@ -52,4 +52,29 @@ class PerfilService {
       throw Exception(body['erro'] ?? 'Erro ao alterar senha');
     }
   }
+
+  /// Exclui (soft-delete) a conta do proprio usuario autenticado.
+  ///
+  /// O backend desativa a conta (nao loga mais) e, sendo ONG, remove o perfil
+  /// das listagens, preservando o historico. So o dono pode excluir; o backend
+  /// valida a partir do token. Lanca [Exception] com a mensagem do corpo se a
+  /// resposta nao for 2xx.
+  Future<void> excluirConta(int usuarioId) async {
+    final response = await http.delete(
+      Uri.parse('${ApiService.baseUrl}/usuarios/$usuarioId'),
+      headers: ApiService.authHeaders(),
+    ).timeout(const Duration(seconds: 10));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String mensagem = 'Erro ao excluir a conta';
+      try {
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+        if (body is Map && body['erro'] != null) {
+          mensagem = body['erro'].toString();
+        } else if (body is Map && body['mensagem'] != null) {
+          mensagem = body['mensagem'].toString();
+        }
+      } catch (_) {}
+      throw Exception(mensagem);
+    }
+  }
 }

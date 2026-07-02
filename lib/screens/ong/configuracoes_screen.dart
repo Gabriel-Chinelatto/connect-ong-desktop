@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../services/demo_service.dart';
 import '../../services/perfil_service.dart';
 import '../../theme/app_colors.dart';
+import '../auth/login_screen.dart';
 import '../legal/documentos_legais_screen.dart';
 
 /// Central de configuracoes da ONG.
@@ -23,6 +24,7 @@ class ConfiguracoesScreen extends StatefulWidget {
 class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
   late Preferencia _p;
   bool _carregandoDemo = false;
+  bool _excluindoConta = false;
 
   @override
   void initState() {
@@ -155,6 +157,25 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                     : const Icon(Icons.chevron_right),
                 onTap: _carregandoDemo ? null : _carregarDadosDemo,
               ),
+              _secaoPerigo('Zona de perigo'),
+              ListTile(
+                leading: const Icon(Icons.delete_forever, color: AppColors.error),
+                title: const Text(
+                  'Excluir minha conta',
+                  style: TextStyle(
+                      color: AppColors.error, fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                    'Desativa a conta da ONG e a remove da plataforma'),
+                trailing: _excluindoConta
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.chevron_right, color: AppColors.error),
+                onTap: _excluindoConta ? null : _confirmarExcluirConta,
+              ),
               const SizedBox(height: 24),
             ],
           ),
@@ -238,6 +259,91 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
         ],
       ),
     );
+  }
+
+  /// Cabecalho de secao em vermelho, para acoes destrutivas (zona de perigo).
+  Widget _secaoPerigo(String titulo) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_outlined,
+              size: 20, color: AppColors.error),
+          const SizedBox(width: 8),
+          Text(titulo,
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.error)),
+        ],
+      ),
+    );
+  }
+
+  /// Fluxo de exclusao da propria conta: confirma, chama o backend e, em caso
+  /// de sucesso, faz o MESMO logout do painel (limpa sessao/token e volta ao
+  /// login). Reutiliza o fluxo existente, sem alterar login/logout.
+  Future<void> _confirmarExcluirConta() async {
+    if (_excluindoConta) return;
+
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir minha conta'),
+        content: const Text(
+            'Tem certeza? A conta da ONG será desativada e sumirá da '
+            'plataforma; você não poderá mais acessá-la. Esta ação não pode '
+            'ser desfeita pelo app.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado != true) return;
+    if (!mounted) return;
+
+    final usuarioId = ConfigController.instance.usuarioId;
+    if (usuarioId == null) return;
+
+    setState(() => _excluindoConta = true);
+    try {
+      await PerfilService().excluirConta(usuarioId);
+      if (!mounted) return;
+      // Mesmo fluxo de logout do painel: limpa sessao e token e volta ao login.
+      ConfigController.instance.limpar();
+      ApiService.setToken(null);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Conta excluída.'),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ApiService.mensagemAmigavel(e)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      setState(() => _excluindoConta = false);
+    }
   }
 
   Widget _switch(String titulo, String? subtitulo, bool valor,
