@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../../config/config_controller.dart';
 import '../ong/painel_ong_screen.dart';
@@ -18,13 +19,21 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
 
   bool _loading = false;
+  bool _mostrarSenha = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _senhaController.dispose();
+    super.dispose();
+  }
 
   Future<void> fazerLogin() async {
+    if (_loading) return;
 
     setState(() {
       _loading = true;
@@ -32,19 +41,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final authService = AuthService();
 
-    final usuario = await authService.login(
-      _emailController.text,
-      _senhaController.text,
-    );
+    Map<String, dynamic>? usuario;
+    String? erroConexao;
+    try {
+      usuario = await authService.login(
+        _emailController.text,
+        _senhaController.text,
+      );
+    } catch (e) {
+      // Falha de rede (servidor fora do ar, timeout, sem conexao).
+      erroConexao = ApiService.mensagemAmigavel(e);
+    }
 
+    if (!mounted) return;
     setState(() {
       _loading = false;
     });
 
-    if (!mounted) return;
+    if (erroConexao != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(erroConexao)),
+      );
+      return;
+    }
 
     if (usuario != null) {
-
       // Carrega as preferencias (tema, fonte, etc.) do usuario.
       final id = usuario['id'];
       if (id is int) {
@@ -53,53 +74,35 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       Navigator.pushReplacement(
-
         context,
-
         MaterialPageRoute(
-
           builder: (_) => PainelOngScreen(
             emailUsuario: _emailController.text,
-            ongId: usuario['ongId'],
+            ongId: usuario!['ongId'],
             ongNome: usuario['nome'],
           ),
         ),
       );
-
     } else {
-
       ScaffoldMessenger.of(context).showSnackBar(
-
-        const SnackBar(
-          content: Text('Login inválido'),
-        ),
+        const SnackBar(content: Text('E-mail ou senha inválidos')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-
-      backgroundColor: Colors.grey[100],
-
       body: Center(
-
         child: Container(
-
           width: 400,
-
           padding: const EdgeInsets.all(32),
-
           decoration: BoxDecoration(
-
-            color: Colors.white,
-
+            color: cs.surface,
             borderRadius: BorderRadius.circular(12),
-
             boxShadow: const [
-
               BoxShadow(
                 color: Colors.black12,
                 blurRadius: 10,
@@ -107,112 +110,87 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
-
           child: Column(
-
             mainAxisSize: MainAxisSize.min,
-
             children: [
-
               Image.asset(
-
-  'assets/images/logo.jpg',
-
-  height: 120,
-),
-
+                'assets/images/logo.jpg',
+                height: 120,
+              ),
               const SizedBox(height: 16),
-
               const Text(
-
                 'Connect ONG',
-
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,
                 ),
               ),
-
               const SizedBox(height: 32),
-
               TextField(
-
                 controller: _emailController,
-
+                autofocus: true,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   labelText: 'E-mail',
                   prefixIcon: Icon(Icons.email),
-                  border: OutlineInputBorder(),
                 ),
               ),
-
               const SizedBox(height: 16),
-
               TextField(
-
                 controller: _senhaController,
-                obscureText: true,
-
-                decoration: const InputDecoration(
+                obscureText: !_mostrarSenha,
+                onSubmitted: (_) => fazerLogin(),
+                decoration: InputDecoration(
                   labelText: 'Senha',
-                  prefixIcon: Icon(Icons.lock),
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock),
+                  suffixIcon: IconButton(
+                    icon: Icon(_mostrarSenha
+                        ? Icons.visibility_off
+                        : Icons.visibility),
+                    tooltip: _mostrarSenha ? 'Ocultar senha' : 'Mostrar senha',
+                    onPressed: () =>
+                        setState(() => _mostrarSenha = !_mostrarSenha),
+                  ),
                 ),
               ),
-
               const SizedBox(height: 24),
-
               SizedBox(
-
                 width: double.infinity,
                 height: 48,
-
                 child: ElevatedButton(
-
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
-
-                  onPressed:
-                      _loading ? null : fazerLogin,
-
+                  onPressed: _loading ? null : fazerLogin,
                   child: _loading
-
-                      ? const CircularProgressIndicator(
-                          color: Colors.white,
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
-
                       : const Text(
                           'Entrar',
-                          style: TextStyle(
-                            fontSize: 16,
-                          ),
+                          style: TextStyle(fontSize: 16),
                         ),
                 ),
               ),
-
               const SizedBox(height: 16),
-
               TextButton(
-
                 onPressed: () {
-
                   Navigator.push(
-
                     context,
-
                     MaterialPageRoute(
-                      builder: (_) =>
-                          const CadastroOngScreen(),
+                      builder: (_) => const CadastroOngScreen(),
                     ),
                   );
                 },
-
-                child: const Text(
-                  'Ainda não tem conta? Cadastre-se',
-                ),
+                child: const Text('Ainda não tem conta? Cadastre-se'),
               ),
             ],
           ),

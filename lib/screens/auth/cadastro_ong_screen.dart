@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/api_service.dart';
 import '../../services/ong_service.dart';
 import '../../theme/app_colors.dart';
 import '../legal/documentos_legais_screen.dart';
@@ -78,8 +79,8 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
       setState(() => _enviando = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
+          content: Text(ApiService.mensagemAmigavel(e)),
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -108,16 +109,23 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
                   const SizedBox(height: 6),
                   const Text(
                     'Crie o perfil e o acesso da sua organização.',
-                    style: TextStyle(color: Colors.black54),
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 24),
                   _campo(_nome, 'Nome da ONG', obrigatorio: true),
-                  _campo(_email, 'E-mail', obrigatorio: true),
-                  _campo(_telefone, 'Telefone'),
+                  _campo(_email, 'E-mail',
+                      obrigatorio: true,
+                      teclado: TextInputType.emailAddress,
+                      validador: _validarEmail),
+                  _campo(_telefone, 'Telefone',
+                      teclado: TextInputType.phone),
                   _campo(_cidade, 'Cidade'),
                   _campo(_cnpj, 'CNPJ (opcional, para verificação)'),
                   _campo(_descricao, 'Descrição', linhas: 3),
-                  _campo(_senha, 'Senha', obrigatorio: true, senha: true),
+                  _campo(_senha, 'Senha',
+                      obrigatorio: true,
+                      senha: true,
+                      validador: _validarSenha),
                   const SizedBox(height: 8),
                   _consentimento(),
                   const SizedBox(height: 24),
@@ -167,7 +175,9 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
             padding: const EdgeInsets.only(top: 12),
             child: Text.rich(
               TextSpan(
-                style: const TextStyle(fontSize: 14, color: Colors.black87),
+                style: TextStyle(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurface),
                 children: [
                   const TextSpan(text: 'Li e concordo com os '),
                   TextSpan(
@@ -202,12 +212,31 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
     );
   }
 
+  // Validacao de e-mail por regex simples (nome@dominio.tld).
+  String? _validarEmail(String? v) {
+    final texto = (v ?? '').trim();
+    if (texto.isEmpty) return 'Campo obrigatório';
+    final regex = RegExp(r'^[\w.+-]+@[\w-]+\.[\w.-]+$');
+    if (!regex.hasMatch(texto)) return 'Informe um e-mail válido';
+    return null;
+  }
+
+  // Senha minima de 6 caracteres.
+  String? _validarSenha(String? v) {
+    final texto = v ?? '';
+    if (texto.isEmpty) return 'Campo obrigatório';
+    if (texto.length < 6) return 'Mínimo de 6 caracteres';
+    return null;
+  }
+
   Widget _campo(
     TextEditingController c,
     String label, {
     bool obrigatorio = false,
     bool senha = false,
     int linhas = 1,
+    TextInputType? teclado,
+    String? Function(String?)? validador,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -215,12 +244,14 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
         controller: c,
         obscureText: senha,
         maxLines: senha ? 1 : linhas,
+        keyboardType: teclado,
         decoration: InputDecoration(labelText: label),
-        validator: obrigatorio
-            ? (v) => (v == null || v.trim().isEmpty)
-                ? 'Campo obrigatório'
-                : null
-            : null,
+        validator: validador ??
+            (obrigatorio
+                ? (v) => (v == null || v.trim().isEmpty)
+                    ? 'Campo obrigatório'
+                    : null
+                : null),
       ),
     );
   }
