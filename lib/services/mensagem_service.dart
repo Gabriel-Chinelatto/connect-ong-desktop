@@ -68,6 +68,27 @@ class MensagemService {
     }
   }
 
+  // Alterna/troca a reacao (emoji) do usuario atual numa mensagem (toggle).
+  // `emojiCode` e um CODIGO (ex.: LIKE, LOVE), nao o caractere.
+  Future<void> reagir(int mensagemId, String emojiCode) async {
+    final response = await http.post(
+      Uri.parse('${ApiService.baseUrl}/mensagens/$mensagemId/reacao'),
+      headers: ApiService.jsonHeaders(),
+      body: jsonEncode({'emoji': emojiCode}),
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String msg = 'Erro ao reagir';
+      try {
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+        if (body is Map && body['erro'] != null) msg = body['erro'].toString();
+      } catch (_) {
+        // Corpo nao-JSON: mantem a mensagem generica.
+      }
+      throw Exception(msg);
+    }
+  }
+
   // Sinaliza que estou digitando neste match. Best-effort: ignora erros.
   Future<void> digitando(int interesseId) async {
     try {

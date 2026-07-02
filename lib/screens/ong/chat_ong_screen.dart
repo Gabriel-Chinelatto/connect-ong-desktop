@@ -9,6 +9,19 @@ import '../../theme/app_colors.dart';
 
 const Color _verde = AppColors.primary;
 
+// Mapa CODIGO -> emoji (o backend usa codigos, nao o caractere).
+const Map<String, String> _emojis = {
+  'LIKE': '👍',
+  'LOVE': '❤️',
+  'LAUGH': '😂',
+  'WOW': '😮',
+  'SAD': '😢',
+  'PRAY': '🙏',
+};
+
+// Ordem fixa dos 6 codigos exibidos no seletor de reacao.
+const List<String> _emojiCodigos = ['LIKE', 'LOVE', 'LAUGH', 'WOW', 'SAD', 'PRAY'];
+
 /// Tela de chat da ONG com um doador (dentro de um match aceito).
 /// Atualiza automaticamente a cada 2 segundos (polling).
 class ChatOngScreen extends StatefulWidget {
@@ -160,52 +173,135 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
     }
   }
 
+  // Abre o seletor de reacoes (long press na bolha; funciona no desktop).
+  // Ao escolher um emoji: fecha, envia a reacao (toggle) e recarrega.
+  Future<void> _abrirSeletorReacao(Mensagem m) async {
+    final codigo = await showDialog<String>(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final c in _emojiCodigos)
+                InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () => Navigator.of(ctx).pop(c),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
+                    child: Text(
+                      _emojis[c] ?? '',
+                      style: const TextStyle(fontSize: 26),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (codigo == null) return;
+    try {
+      await _service.reagir(m.id, codigo);
+      await _carregar();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ApiService.mensagemAmigavel(e)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
   Widget _bolha(Mensagem m) {
     final minha = m.remetente == _meuRemetente;
     final cs = Theme.of(context).colorScheme;
+    // Ha alguma reacao feita pelo MEU lado? Da destaque sutil ao chip.
+    final reagiuMeuLado =
+        m.reacoes.any((r) => r.lado == _meuRemetente);
     return Align(
       alignment: minha ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 420),
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: minha ? _verde : cs.surfaceContainerHighest,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(minha ? 16 : 4),
-            bottomRight: Radius.circular(minha ? 4 : 16),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              m.conteudo,
-              style: TextStyle(
-                color: minha ? Colors.white : cs.onSurface,
-                height: 1.3,
-              ),
-            ),
-            // Check de "visto" apenas nas MINHAS mensagens.
-            if (minha)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Icon(
-                    m.lida ? Icons.done_all : Icons.check,
-                    size: 14,
-                    color: m.lida
-                        ? Colors.lightBlueAccent
-                        : Colors.white70,
-                  ),
+      child: Column(
+        crossAxisAlignment:
+            minha ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onLongPress: () => _abrirSeletorReacao(m),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 420),
+              margin: const EdgeInsets.only(top: 4, left: 12, right: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: minha ? _verde : cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(minha ? 16 : 4),
+                  bottomRight: Radius.circular(minha ? 4 : 16),
                 ),
               ),
-          ],
-        ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    m.conteudo,
+                    style: TextStyle(
+                      color: minha ? Colors.white : cs.onSurface,
+                      height: 1.3,
+                    ),
+                  ),
+                  // Check de "visto" apenas nas MINHAS mensagens.
+                  if (minha)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Icon(
+                          m.lida ? Icons.done_all : Icons.check,
+                          size: 14,
+                          color: m.lida
+                              ? Colors.lightBlueAccent
+                              : Colors.white70,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          // Chip de reacoes abaixo da bolha (nao interfere no check de visto).
+          if (m.reacoes.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 2, left: 12, right: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: reagiuMeuLado
+                    ? _verde.withValues(alpha: 0.15)
+                    : cs.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+                border: reagiuMeuLado
+                    ? Border.all(color: _verde.withValues(alpha: 0.6))
+                    : null,
+              ),
+              child: Text(
+                m.reacoes.map((r) => _emojis[r.emoji] ?? '').join(),
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
+        ],
       ),
     );
   }
