@@ -19,11 +19,101 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // Credenciais de demonstracao (conta ONG de exemplo) exibidas no "Modo Feira".
+  static const String _demoEmail = 'demo.larviva@connectong.com';
+  static const String _demoSenha = 'demo123';
+
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
 
   bool _loading = false;
   bool _mostrarSenha = false;
+
+  /// Preenche os campos com as credenciais de demonstracao (Modo Feira).
+  void _preencherDemo() {
+    _emailController.text = _demoEmail;
+    _senhaController.text = _demoSenha;
+  }
+
+  /// Cartao discreto com as credenciais de demonstracao (Modo Feira).
+  Widget _cardModoFeira(ColorScheme cs) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primaryLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.celebration_outlined,
+                  size: 18, color: AppColors.primary),
+              SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Modo Feira — acesso de demonstração',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _linhaCredencial(cs, 'E-mail', _demoEmail),
+          const SizedBox(height: 4),
+          _linhaCredencial(cs, 'Senha', _demoSenha),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: _preencherDemo,
+              icon: const Icon(Icons.edit_note, size: 18),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+              ),
+              label: const Text('Preencher'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _linhaCredencial(ColorScheme cs, String rotulo, String valor) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 58,
+          child: Text(
+            rotulo,
+            style: TextStyle(
+              color: cs.onSurfaceVariant,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        Expanded(
+          child: SelectableText(
+            valor,
+            style: TextStyle(
+              color: cs.onSurface,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   void dispose() {
@@ -197,6 +287,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                 ),
               ),
+              // Cartao do "Modo Feira": exibe as credenciais de demonstracao para
+              // a apresentacao (FECITEC), sem precisar anota-las em papel. So
+              // aparece quando a flag esta ligada (ver Configuracoes).
+              if (ConfigController.instance.modoFeira) ...[
+                const SizedBox(height: 20),
+                _cardModoFeira(cs),
+              ],
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () {

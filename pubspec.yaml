@@ -19,6 +19,7 @@ dependencies:
   flutter_svg: ^2.0.10      # Ilustrações vetoriais (SVG)
   pdf: ^3.11.1              # Geração de relatórios em PDF
   printing: ^5.13.3         # Pré-visualização/impressão de PDF
+  shared_preferences: ^2.5.5 # Persistência local (ex.: flag do Modo Feira)
 
 dev_dependencies:
   flutter_test:

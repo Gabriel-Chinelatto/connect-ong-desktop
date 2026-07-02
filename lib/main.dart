@@ -9,6 +9,9 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Carrega o token de acesso (no-op por enquanto: sem persistencia em disco).
   await ApiService.carregarToken();
+  // Carrega preferencias locais do dispositivo (ex.: flag do Modo Feira), que a
+  // tela de login precisa conhecer antes de qualquer autenticacao.
+  await ConfigController.instance.carregarLocal();
   runApp(const ConnectONGApp());
 }
 

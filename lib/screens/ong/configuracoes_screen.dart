@@ -130,6 +130,17 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                 onTap: () => _abrirDocumento(DocumentoLegal.termos),
               ),
               _secao('Modo Feira', Icons.celebration_outlined),
+              SwitchListTile(
+                title: const Text('Modo Feira'),
+                subtitle: const Text(
+                    'Mostra as credenciais de demonstração na tela de login'),
+                value: ConfigController.instance.modoFeira,
+                activeThumbColor: AppColors.primary,
+                onChanged: (v) {
+                  ConfigController.instance.setModoFeira(v);
+                  setState(() {});
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.auto_awesome),
                 title: const Text('Carregar dados demonstrativos'),

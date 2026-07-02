@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/preferencia.dart';
 import '../services/preferencia_service.dart';
@@ -15,11 +16,42 @@ class ConfigController extends ChangeNotifier {
 
   final PreferenciaService _service = PreferenciaService();
 
+  /// Chave da flag "Modo Feira" no armazenamento local (SharedPreferences).
+  static const String _kModoFeira = 'modo_feira';
+
   Preferencia _prefs = Preferencia();
   int? _usuarioId;
 
+  // A flag "Modo Feira" e um estado LOCAL do dispositivo (nao do usuario): ela
+  // controla se a tela de login exibe as credenciais de demonstracao, e por isso
+  // precisa existir ANTES de qualquer login. Fica em SharedPreferences (e nao no
+  // backend por usuario, como as demais preferencias). Padrao ligado (true).
+  bool _modoFeira = true;
+
   Preferencia get prefs => _prefs;
   int? get usuarioId => _usuarioId;
+
+  bool get modoFeira => _modoFeira;
+
+  /// Persiste e aplica a flag "Modo Feira" localmente.
+  Future<void> setModoFeira(bool valor) async {
+    _modoFeira = valor;
+    notifyListeners();
+    try {
+      final sp = await SharedPreferences.getInstance();
+      await sp.setBool(_kModoFeira, valor);
+    } catch (_) {}
+  }
+
+  /// Carrega preferencias LOCAIS (device) do disco. Chamar no boot do app,
+  /// antes do login, pois a tela de login depende de [modoFeira].
+  Future<void> carregarLocal() async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      _modoFeira = sp.getBool(_kModoFeira) ?? true;
+      notifyListeners();
+    } catch (_) {}
+  }
 
   ThemeMode get themeMode {
     switch (_prefs.tema) {
