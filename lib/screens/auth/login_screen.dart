@@ -66,6 +66,23 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (usuario != null) {
+      // Este painel e EXCLUSIVO de ONGs. Uma conta de doador (cadastrada no app
+      // mobile) tem credenciais validas, mas nao pode gerenciar uma ONG. Sem esta
+      // barreira, um doador entraria no painel administrativo (e, no fallback do
+      // seletor, veria/gerenciaria qualquer ONG). Bloqueamos aqui no cliente.
+      if (usuario['tipo'] != 'ONG') {
+        await ApiService.setToken(null); // descarta o JWT do doador
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Este acesso e exclusivo para ONGs. Use o app do doador para contas de doador.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+
       // Carrega as preferencias (tema, fonte, etc.) do usuario.
       final id = usuario['id'];
       if (id is int) {

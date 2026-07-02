@@ -93,6 +93,9 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
         remetente: _meuRemetente,
         conteudo: texto,
       );
+      // Se o usuario saiu da tela durante o envio, o _controller ja foi
+      // descartado no dispose(): mexer nele lancaria "used after disposed".
+      if (!mounted) return;
       _controller.clear();
       await _carregar();
     } catch (e) {

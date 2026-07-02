@@ -285,23 +285,36 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     }
   }
 
+  // Guarda anti-duplo-clique para as acoes de mutacao (aceitar/recusar/encerrar).
+  // Sem ela, dois toques rapidos disparavam dois PUT; o segundo falhava ("ja
+  // aceito") e mostrava "Erro ao aceitar" logo apos um sucesso.
+  bool _acaoEmCurso = false;
+
   Future<void> _aceitar(Interesse i) async {
+    if (_acaoEmCurso) return;
+    _acaoEmCurso = true;
     try {
       await _interesseService.aceitar(i.id);
       _snack('Interesse aceito! Match criado. 💚', _verde);
       _carregarTudo();
     } catch (e) {
       _snack('Erro ao aceitar', Colors.red);
+    } finally {
+      _acaoEmCurso = false;
     }
   }
 
   Future<void> _recusar(Interesse i) async {
+    if (_acaoEmCurso) return;
+    _acaoEmCurso = true;
     try {
       await _interesseService.recusar(i.id);
       _snack('Interesse recusado.', Colors.orange.shade700);
       _carregarTudo();
     } catch (e) {
       _snack('Erro ao recusar', Colors.red);
+    } finally {
+      _acaoEmCurso = false;
     }
   }
 
@@ -328,12 +341,16 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   }
 
   Future<void> _encerrarCampanha(Campanha c) async {
+    if (_acaoEmCurso) return;
+    _acaoEmCurso = true;
     try {
       await _campanhaService.encerrar(c.id);
       _snack('Campanha encerrada.', Colors.orange.shade700);
       _carregarTudo();
     } catch (e) {
       _snack('Erro ao encerrar campanha', Colors.red);
+    } finally {
+      _acaoEmCurso = false;
     }
   }
 
@@ -341,6 +358,9 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     final tituloC = TextEditingController();
     final descC = TextEditingController();
     final fotoC = TextEditingController();
+    // Guarda anti-duplo-clique: setada sincronamente antes do 1o await, entao um
+    // segundo toque no "Publicar" e ignorado (evita prestacao de contas duplicada).
+    bool enviando = false;
 
     final ok = await showDialog<bool>(
       context: context,
@@ -390,6 +410,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                 );
                 return;
               }
+              if (enviando) return;
+              enviando = true;
               try {
                 await PrestacaoService().criar(
                   interesseId: it.id,
@@ -400,6 +422,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                 if (!dialogContext.mounted) return;
                 Navigator.pop(dialogContext, true);
               } catch (e) {
+                enviando = false; // permite tentar de novo apos falha
                 if (!dialogContext.mounted) return;
                 ScaffoldMessenger.of(dialogContext).showSnackBar(
                   SnackBar(

@@ -36,10 +36,15 @@ class NotificacaoService {
   }
 
   Future<void> marcarTodas(int usuarioId) async {
-    await http.put(
+    final response = await http.put(
       Uri.parse(
           '${ApiService.baseUrl}/notificacoes/marcar-todas?usuarioId=$usuarioId'),
       headers: ApiService.authHeaders(),
     ).timeout(const Duration(seconds: 10));
+    // Antes o status era ignorado: um 500 passava como sucesso e as notificacoes
+    // continuavam nao-lidas apos recarregar, sem avisar o usuario.
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Erro ao marcar notificações como lidas');
+    }
   }
 }

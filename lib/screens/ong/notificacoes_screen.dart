@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/config_controller.dart';
 import '../../models/notificacao.dart';
+import '../../services/api_service.dart';
 import '../../services/notificacao_service.dart';
 import '../../theme/app_colors.dart';
 
@@ -50,8 +51,16 @@ class _NotificacoesScreenState extends State<NotificacoesScreen> {
   Future<void> _marcarTodas() async {
     final id = ConfigController.instance.usuarioId;
     if (id == null) return;
-    await _service.marcarTodas(id);
-    _carregar();
+    try {
+      await _service.marcarTodas(id);
+      _carregar();
+    } catch (e) {
+      // Antes a falha de rede subia como excecao nao tratada (sem feedback).
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ApiService.mensagemAmigavel(e))),
+      );
+    }
   }
 
   IconData _icone(String tipo) {
