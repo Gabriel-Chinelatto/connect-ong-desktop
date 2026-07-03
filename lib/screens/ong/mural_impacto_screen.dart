@@ -149,8 +149,9 @@ class _MuralImpactoScreenState extends State<MuralImpactoScreen> {
                     fontSize: 42,
                     fontWeight: FontWeight.w800,
                     color: AppColors.primary)),
-            const Text('pessoas alcancadas (estimativa)',
-                style: TextStyle(color: AppColors.textSecondary)),
+            Text('pessoas alcancadas (estimativa)',
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ],
         ),
       ),
@@ -200,7 +201,9 @@ class _MuralImpactoScreenState extends State<MuralImpactoScreen> {
             _contador(i.valor,
                 style: const TextStyle(
                     fontSize: 24, fontWeight: FontWeight.bold)),
-            Text(i.label, style: const TextStyle(color: AppColors.textSecondary)),
+            Text(i.label,
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ],
         ),
       ),
@@ -221,8 +224,10 @@ class _MuralImpactoScreenState extends State<MuralImpactoScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Total doado via PIX',
-                    style: TextStyle(color: AppColors.textSecondary)),
+                Text('Total doado via PIX',
+                    style: TextStyle(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant)),
                 Text('R\$ ${_stats.valorTotalDoado.toStringAsFixed(2)}',
                     style: const TextStyle(
                         fontSize: 22,

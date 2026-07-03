@@ -153,14 +153,16 @@ class _RankingTransparenciaScreenState
                       if (o.verificada) ...[
                         const SizedBox(width: 6),
                         const Icon(Icons.verified,
-                            color: Colors.blue, size: 16),
+                            color: AppColors.info, size: 16),
                       ],
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(o.cidade,
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13)),
+                      style: TextStyle(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 13)),
                 ],
               ),
             ),

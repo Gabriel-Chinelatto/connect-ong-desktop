@@ -85,7 +85,10 @@ class AppTheme {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: altoContraste ? texto : Colors.grey.shade300,
+            // No escuro a borda clara demais "estoura"; usa um branco suave.
+            color: altoContraste
+                ? texto
+                : (escuro ? Colors.white24 : Colors.grey.shade300),
           ),
         ),
         focusedBorder: OutlineInputBorder(

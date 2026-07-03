@@ -5,9 +5,10 @@ import '../../theme/app_radius.dart';
 
 /// Helper para exibir snackbars padronizados de feedback ao usuario.
 ///
-/// Oferece [sucesso] (verde da marca) e [erro] (vermelho semantico), ambos no
-/// estilo flutuante e arredondado da marca. Usa as cores do design system
-/// (AppColors) para manter contraste correto tambem no tema escuro.
+/// Oferece [sucesso] (verde da marca), [erro] (vermelho), [aviso] (ambar) e
+/// [info] (azul), todos no estilo flutuante e arredondado da marca. Usa as
+/// cores semanticas do design system (AppColors) para manter contraste
+/// correto tambem no tema escuro.
 class AppSnackbar {
   AppSnackbar._();
 
@@ -17,6 +18,14 @@ class AppSnackbar {
 
   static void erro(BuildContext context, String mensagem) {
     _mostrar(context, mensagem, AppColors.error);
+  }
+
+  static void aviso(BuildContext context, String mensagem) {
+    _mostrar(context, mensagem, AppColors.warning);
+  }
+
+  static void info(BuildContext context, String mensagem) {
+    _mostrar(context, mensagem, AppColors.info);
   }
 
   static void _mostrar(BuildContext context, String mensagem, Color cor) {

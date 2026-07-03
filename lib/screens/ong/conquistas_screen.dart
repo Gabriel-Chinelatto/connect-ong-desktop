@@ -68,7 +68,6 @@ class _ConquistasScreenState extends State<ConquistasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Conquistas'),
         backgroundColor: AppColors.primary,
@@ -110,7 +109,6 @@ class _ConquistasScreenState extends State<ConquistasScreen> {
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
                     ),
                   ),
                 ],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../config/config_controller.dart';
 import '../screens/ong/notificacoes_screen.dart';
 import '../services/notificacao_service.dart';
+import '../theme/app_colors.dart';
 
 /// Sino de notificacoes com contador de nao-lidas (desktop).
 class NotificacaoBell extends StatefulWidget {
@@ -56,7 +57,7 @@ class _NotificacaoBellState extends State<NotificacaoBell> {
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(
-                color: Colors.red,
+                color: AppColors.error,
                 shape: BoxShape.circle,
               ),
               constraints: const BoxConstraints(minWidth: 18, minHeight: 18),

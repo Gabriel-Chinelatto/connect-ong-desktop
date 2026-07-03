@@ -39,7 +39,9 @@ class DocumentosLegaisScreen extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 'Ultima atualizacao: ${doc.atualizacao}',
-                style: const TextStyle(color: Colors.black54, fontSize: 13),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13),
               ),
               const SizedBox(height: 24),
               for (final s in doc.secoes) ...[

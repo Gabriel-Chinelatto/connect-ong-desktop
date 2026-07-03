@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/perfil_publico_ong.dart';
 import '../../services/perfil_publico_service.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/feedback/empty_state.dart';
 
 /// Pre-visualizacao de como a ONG aparece publicamente para os doadores
 /// (mesmo endpoint usado pelo app do doador).
@@ -56,7 +57,6 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text('Perfil publico — ${widget.ongNome}'),
         backgroundColor: AppColors.primary,
@@ -130,17 +130,12 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
   }
 
   Widget _vazio() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.grey),
-          const SizedBox(height: 12),
-          const Text('Nao foi possivel carregar o perfil'),
-          const SizedBox(height: 8),
-          TextButton(onPressed: _carregar, child: const Text('Tentar de novo')),
-        ],
-      ),
+    return EmptyState(
+      icone: Icons.cloud_off_outlined,
+      mensagem: 'Não foi possível carregar o perfil',
+      detalhe: 'Verifique sua conexão e tente novamente.',
+      acaoRotulo: 'Tentar de novo',
+      onAcao: _carregar,
     );
   }
 
@@ -175,13 +170,15 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
                       if (p.verificada) ...[
                         const SizedBox(width: 6),
                         const Icon(Icons.verified,
-                            color: Colors.blue, size: 20),
+                            color: AppColors.info, size: 20),
                       ],
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(p.cidade,
-                      style: TextStyle(color: Colors.grey.shade700)),
+                      style: TextStyle(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant)),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -331,8 +328,11 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w600)),
               ),
               if (c.encerrada)
-                const Text('Encerrada',
-                    style: TextStyle(fontSize: 12, color: Colors.black54)),
+                Text('Encerrada',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant)),
             ],
           ),
           const SizedBox(height: 6),
@@ -341,7 +341,8 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
             child: LinearProgressIndicator(
               value: c.progresso / 100,
               minHeight: 8,
-              backgroundColor: Colors.grey.shade200,
+              backgroundColor:
+                  Theme.of(context).colorScheme.surfaceContainerHighest,
               valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
@@ -349,7 +350,9 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
           Text(
               'R\$ ${c.valorArrecadado.toStringAsFixed(0)} de '
               'R\$ ${c.metaValor.toStringAsFixed(0)} (${c.progresso}%)',
-              style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
     );
@@ -362,12 +365,14 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
         children: [
           Icon(n.urgente ? Icons.priority_high : Icons.circle,
               size: n.urgente ? 18 : 8,
-              color: n.urgente ? Colors.red : AppColors.primary),
+              color: n.urgente ? AppColors.error : AppColors.primary),
           const SizedBox(width: 10),
           Expanded(child: Text(n.titulo)),
           if (n.categoria.isNotEmpty)
             Text(n.categoria,
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
     );

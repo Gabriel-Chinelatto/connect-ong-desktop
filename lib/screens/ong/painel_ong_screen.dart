@@ -28,6 +28,7 @@ import '../../theme/app_colors.dart';
 import '../../utils/categorias.dart';
 import '../../config/config_controller.dart';
 import '../../widgets/notificacao_bell.dart';
+import '../../widgets/feedback/app_snackbar.dart';
 import '../../widgets/feedback/empty_state.dart';
 
 const Color _verde = AppColors.primary;
@@ -257,23 +258,13 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _carregando = false);
-      _snack('Erro ao carregar dados do painel', Colors.red);
+      AppSnackbar.erro(context, 'Erro ao carregar dados do painel');
     }
-  }
-
-  void _snack(String msg, Color cor) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: cor,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   /// Bloco 30: gera e abre o relatorio em PDF da ONG.
   Future<void> _gerarRelatorioPdf() async {
-    _snack('Gerando relatório PDF...', _verde);
+    AppSnackbar.info(context, 'Gerando relatório PDF...');
     try {
       final p = await PerfilPublicoService().buscar(widget.ong.id);
       final bytes = await RelatorioPdfService.relatorioOng(p);
@@ -281,7 +272,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
       await Printing.layoutPdf(onLayout: (format) async => bytes);
     } catch (e) {
       if (!mounted) return;
-      _snack('Erro ao gerar relatório PDF', Colors.red);
+      AppSnackbar.erro(context, 'Erro ao gerar relatório PDF');
     }
   }
 
@@ -295,10 +286,12 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     _acaoEmCurso = true;
     try {
       await _interesseService.aceitar(i.id);
-      _snack('Interesse aceito! Match criado. 💚', _verde);
+      if (!mounted) return;
+      AppSnackbar.sucesso(context, 'Interesse aceito! Match criado. 💚');
       _carregarTudo();
     } catch (e) {
-      _snack('Erro ao aceitar', Colors.red);
+      if (!mounted) return;
+      AppSnackbar.erro(context, 'Erro ao aceitar');
     } finally {
       _acaoEmCurso = false;
     }
@@ -309,10 +302,12 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     _acaoEmCurso = true;
     try {
       await _interesseService.recusar(i.id);
-      _snack('Interesse recusado.', Colors.orange.shade700);
+      if (!mounted) return;
+      AppSnackbar.aviso(context, 'Interesse recusado.');
       _carregarTudo();
     } catch (e) {
-      _snack('Erro ao recusar', Colors.red);
+      if (!mounted) return;
+      AppSnackbar.erro(context, 'Erro ao recusar');
     } finally {
       _acaoEmCurso = false;
     }
@@ -323,8 +318,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
       context: context,
       builder: (_) => _FormNecessidade(ongId: widget.ong.id),
     );
-    if (publicou == true) {
-      _snack('Necessidade publicada! 🎉', _verde);
+    if (publicou == true && mounted) {
+      AppSnackbar.sucesso(context, 'Necessidade publicada! 🎉');
       _carregarTudo();
     }
   }
@@ -334,8 +329,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
       context: context,
       builder: (_) => _FormCampanha(ongId: widget.ong.id),
     );
-    if (criou == true) {
-      _snack('Campanha criada! 🎉', _verde);
+    if (criou == true && mounted) {
+      AppSnackbar.sucesso(context, 'Campanha criada! 🎉');
       _carregarTudo();
     }
   }
@@ -345,10 +340,12 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     _acaoEmCurso = true;
     try {
       await _campanhaService.encerrar(c.id);
-      _snack('Campanha encerrada.', Colors.orange.shade700);
+      if (!mounted) return;
+      AppSnackbar.aviso(context, 'Campanha encerrada.');
       _carregarTudo();
     } catch (e) {
-      _snack('Erro ao encerrar campanha', Colors.red);
+      if (!mounted) return;
+      AppSnackbar.erro(context, 'Erro ao encerrar campanha');
     } finally {
       _acaoEmCurso = false;
     }
@@ -443,8 +440,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     descC.dispose();
     fotoC.dispose();
 
-    if (ok == true) {
-      _snack('Prestação de contas publicada! 🧾', _verde);
+    if (ok == true && mounted) {
+      AppSnackbar.sucesso(context, 'Prestação de contas publicada! 🧾');
     }
   }
 
@@ -578,7 +575,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               'Necessidades', _verde),
           const SizedBox(width: 14),
           _statMini(Icons.people, '${_interesses.length}', 'Interesses',
-              Colors.blue.shade400),
+              AppColors.info),
           const SizedBox(width: 14),
           _statMini(Icons.handshake, '$matches', 'Matches fechados',
               Colors.pink.shade400),
@@ -621,8 +618,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                     style: const TextStyle(
                         fontSize: 22, fontWeight: FontWeight.bold)),
                 Text(rotulo,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 12)),
+                    style: TextStyle(
+                        color: cs.onSurfaceVariant, fontSize: 12)),
               ],
             ),
           ],
@@ -658,11 +655,13 @@ class _PainelConteudoState extends State<_PainelConteudo> {
             trailing: n.urgente
                 ? Chip(
                     label: const Text('Urgente'),
-                    backgroundColor: Colors.red.shade50,
-                    labelStyle: TextStyle(color: Colors.red.shade700),
+                    backgroundColor: AppColors.error.withValues(alpha: 0.12),
+                    labelStyle: const TextStyle(color: AppColors.error),
+                    side: BorderSide.none,
                   )
                 : Text(n.status,
-                    style: const TextStyle(color: AppColors.textSecondary)),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ),
         );
       },
@@ -705,16 +704,19 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                               const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 2),
                       Text('Interesse em: ${it.necessidadeTitulo ?? "-"}',
-                          style: const TextStyle(color: AppColors.textSecondary)),
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
                     ],
                   ),
                 ),
                 if (pendente) ...[
                   TextButton.icon(
                     onPressed: () => _recusar(it),
-                    icon: const Icon(Icons.close, color: Colors.red),
+                    icon: const Icon(Icons.close, color: AppColors.error),
                     label: const Text('Recusar',
-                        style: TextStyle(color: Colors.red)),
+                        style: TextStyle(color: AppColors.error)),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
@@ -837,7 +839,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
             ),
             const SizedBox(height: 6),
             Text(c.descricao,
-                style: const TextStyle(color: AppColors.textSecondary)),
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
             const SizedBox(height: 14),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -913,8 +916,11 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                   if (tempo.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(tempo,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
                   ],
                 ],
               ),
@@ -959,7 +965,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
 
   Widget _statusBadge(String status) {
     final aceito = status == 'ACEITO';
-    final cor = aceito ? _verde : Colors.red.shade600;
+    final cor = aceito ? _verde : AppColors.error;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(

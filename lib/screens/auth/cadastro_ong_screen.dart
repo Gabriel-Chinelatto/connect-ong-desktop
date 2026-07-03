@@ -50,7 +50,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
         const SnackBar(
           content: Text(
               'Para continuar, aceite os Termos de Uso e a Politica de Privacidade.'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
       return;
@@ -107,9 +107,10 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
                         TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'Crie o perfil e o acesso da sua organização.',
-                    style: TextStyle(color: AppColors.textSecondary),
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 24),
                   _campo(_nome, 'Nome da ONG', obrigatorio: true),
