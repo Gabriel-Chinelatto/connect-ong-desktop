@@ -44,11 +44,15 @@ class PainelOngScreen extends StatefulWidget {
   final int? ongId;
   final String? ongNome;
 
+  /// Aba do painel aberta inicialmente (0 = Necessidades ... 3 = Doações).
+  final int abaInicial;
+
   const PainelOngScreen({
     super.key,
     required this.emailUsuario,
     this.ongId,
     this.ongNome,
+    this.abaInicial = 0,
   });
 
   @override
@@ -139,7 +143,11 @@ class _PainelOngScreenState extends State<PainelOngScreen> {
     if (_ong == null) {
       return _buildSeletor();
     }
-    return _PainelConteudo(ong: _ong!, onLogout: _logout);
+    return _PainelConteudo(
+      ong: _ong!,
+      onLogout: _logout,
+      abaInicial: widget.abaInicial,
+    );
   }
 
   // Tela de falha ao carregar a ONG, com acao para tentar novamente.
@@ -205,7 +213,14 @@ class _PainelConteudo extends StatefulWidget {
   final Ong ong;
   final VoidCallback onLogout;
 
-  const _PainelConteudo({required this.ong, required this.onLogout});
+  /// Aba aberta inicialmente (repassada ao DefaultTabController).
+  final int abaInicial;
+
+  const _PainelConteudo({
+    required this.ong,
+    required this.onLogout,
+    this.abaInicial = 0,
+  });
 
   @override
   State<_PainelConteudo> createState() => _PainelConteudoState();
@@ -491,6 +506,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 5,
+      initialIndex: widget.abaInicial,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Painel da ONG'),
