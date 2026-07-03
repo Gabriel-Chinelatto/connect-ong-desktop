@@ -4,8 +4,10 @@ import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../../config/config_controller.dart';
+import '../../widgets/feedback/app_snackbar.dart';
 import '../ong/painel_ong_screen.dart';
 import 'cadastro_ong_screen.dart';
+import 'esqueci_senha_screen.dart';
 
 /// Tela inicial: login do responsavel pela ONG.
 ///
@@ -120,6 +122,18 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _senhaController.dispose();
     super.dispose();
+  }
+
+  /// Abre o fluxo "Esqueci a senha"; se a senha foi redefinida, confirma aqui.
+  Future<void> _abrirEsqueciSenha() async {
+    final redefiniu = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const EsqueciSenhaScreen()),
+    );
+    if (redefiniu == true && mounted) {
+      AppSnackbar.sucesso(
+          context, 'Senha redefinida! Faça login com a nova senha.');
+    }
   }
 
   Future<void> fazerLogin() async {
@@ -262,7 +276,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _abrirEsqueciSenha,
+                  child: const Text('Esqueceu a senha?',
+                      style: TextStyle(fontSize: 13)),
+                ),
+              ),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 height: 48,
