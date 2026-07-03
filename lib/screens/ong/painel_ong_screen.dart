@@ -8,12 +8,15 @@ import '../../models/interesse.dart';
 import '../../models/campanha.dart';
 import '../../models/atividade.dart';
 import '../../models/doacao_financeira.dart';
+import '../../models/prestacao.dart';
+import '../../models/perfil_publico_doador.dart';
 import '../../services/api_service.dart';
 import '../../services/doacao_financeira_service.dart';
 import '../../services/ong_service.dart';
 import '../../services/necessidade_service.dart';
 import '../../services/interesse_service.dart';
 import '../../services/prestacao_service.dart';
+import '../../services/avaliacao_doador_service.dart';
 import '../../services/campanha_service.dart';
 import '../../services/atividade_service.dart';
 import '../../services/perfil_publico_service.dart';
@@ -21,7 +24,10 @@ import '../../services/relatorio_pdf_service.dart';
 import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
 import 'configuracoes_screen.dart';
+import 'dialogs_match.dart';
+import 'editar_ong_screen.dart';
 import 'perfil_publico_ong_screen.dart';
+import 'perfil_publico_doador_screen.dart';
 import 'mural_impacto_screen.dart';
 import 'ranking_transparencia_screen.dart';
 import 'conquistas_screen.dart';
@@ -240,6 +246,14 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   List<Atividade> _atividades = [];
   bool _carregando = true;
 
+  // Pendencias de prestacao de contas (matches CONCLUIDOS sem prestacao).
+  // Alimenta o banner do topo e a secao no comeco da aba Interesses.
+  List<PendenciaPrestacao> _pendencias = [];
+
+  // Minha avaliacao (desta ONG) por doador, para o botao virar
+  // "Editar avaliação" e o dialog abrir pre-carregado. Best-effort.
+  Map<int, AvaliacaoDoador> _minhasAvaliacoes = {};
+
   // Aba "Doações": estados proprios (loading/erro/lista) para a aba poder
   // falhar e ser recarregada sem derrubar o resto do painel.
   List<DoacaoFinanceira> _doacoes = [];
@@ -303,6 +317,34 @@ class _PainelConteudoState extends State<_PainelConteudo> {
       try {
         final perfil = await PerfilPublicoService().buscar(widget.ong.id);
         _verificada = perfil.verificada;
+      } catch (_) {}
+      // Pendencias de prestacao de contas — best-effort: sem elas o painel
+      // funciona normalmente (banner e secao simplesmente nao aparecem).
+      try {
+        _pendencias = await PrestacaoService().pendencias(widget.ong.id);
+      } catch (_) {
+        _pendencias = [];
+      }
+      // Minhas avaliacoes dos doadores com match CONCLUIDO — best-effort.
+      // O GET publico so traz ongNome (sem ongId), entao identifica a minha
+      // avaliacao comparando com o nome da ONG da sessao.
+      try {
+        final mapa = <int, AvaliacaoDoador>{};
+        final doadores = ints
+            .where((i) => i.status == 'CONCLUIDO' && i.doadorId != null)
+            .map((i) => i.doadorId!)
+            .toSet();
+        for (final doadorId in doadores) {
+          final avs =
+              await AvaliacaoDoadorService().listarPorDoador(doadorId);
+          for (final a in avs) {
+            if (a.ongNome != null && a.ongNome == widget.ong.nome) {
+              mapa[doadorId] = a;
+              break;
+            }
+          }
+        }
+        _minhasAvaliacoes = mapa;
       } catch (_) {}
       if (!mounted) return;
       setState(() {
@@ -408,98 +450,104 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     }
   }
 
-  Future<void> _abrirPrestarContas(Interesse it) async {
-    final tituloC = TextEditingController();
-    final descC = TextEditingController();
-    final fotoC = TextEditingController();
-    // Guarda anti-duplo-clique: setada sincronamente antes do 1o await, entao um
-    // segundo toque no "Publicar" e ignorado (evita prestacao de contas duplicada).
-    bool enviando = false;
-
-    final ok = await showDialog<bool>(
+  /// Marca a doacao de um match ACEITO como recebida (vira CONCLUIDO).
+  /// Pede confirmacao porque a acao inicia o prazo de 10 dias da prestacao.
+  Future<void> _concluir(Interesse it) async {
+    final confirmou = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Prestar contas'),
-        content: SizedBox(
-          width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: tituloC,
-                autofocus: true,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Título'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descC,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                    labelText: 'O que foi feito com a doação'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: fotoC,
-                decoration:
-                    const InputDecoration(labelText: 'URL da foto (opcional)'),
-              ),
-            ],
-          ),
+      builder: (ctx) => AlertDialog(
+        title: const Text('Doação recebida?'),
+        content: Text(
+          'Confirmar que você recebeu a doação de '
+          '${it.doadorNome ?? "este doador"}?\n\n'
+          'Isso marca a doação como entregue e inicia o prazo de 10 dias '
+          'para a prestação de contas.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () => Navigator.pop(ctx, false),
             child: const Text('Cancelar'),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              // Sem titulo o botao parecia "morto": agora avisa o usuario.
-              if (tituloC.text.trim().isEmpty) {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(
-                    content: Text('Informe um título para a prestação de contas.'),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
-                return;
-              }
-              if (enviando) return;
-              enviando = true;
-              try {
-                await PrestacaoService().criar(
-                  interesseId: it.id,
-                  titulo: tituloC.text.trim(),
-                  descricao: descC.text.trim(),
-                  fotoUrl: fotoC.text.trim(),
-                );
-                if (!dialogContext.mounted) return;
-                Navigator.pop(dialogContext, true);
-              } catch (e) {
-                enviando = false; // permite tentar de novo apos falha
-                if (!dialogContext.mounted) return;
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  SnackBar(
-                    content: Text(ApiService.mensagemAmigavel(e)),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
-              }
-            },
-            child: const Text('Publicar'),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.check),
+            label: const Text('Doação recebida'),
           ),
         ],
       ),
     );
+    if (confirmou != true) return;
 
-    // Libera os controllers depois que o dialogo fecha (evita vazamento).
-    tituloC.dispose();
-    descC.dispose();
-    fotoC.dispose();
+    if (_acaoEmCurso) return;
+    _acaoEmCurso = true;
+    try {
+      await _interesseService.concluir(it.id);
+      if (!mounted) return;
+      AppSnackbar.sucesso(
+          context, 'Doação marcada como recebida! O doador foi avisado. 💚');
+      _carregarTudo();
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackbar.erro(context, ApiService.mensagemAmigavel(e));
+    } finally {
+      _acaoEmCurso = false;
+    }
+  }
 
+  /// Abre o formulario rico de prestacao de contas (fotos + valor).
+  Future<void> _abrirPrestarContas(int interesseId) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => FormPrestacao(interesseId: interesseId),
+    );
     if (ok == true && mounted) {
       AppSnackbar.sucesso(context, 'Prestação de contas publicada! 🧾');
+      // Recarrega: a pendencia deste match (se havia) some da lista.
+      _carregarTudo();
     }
+  }
+
+  /// Lista as prestacoes de contas ja publicadas neste match.
+  void _verPrestacoes(Interesse it) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => DialogPrestacoes(
+        interesseId: it.id,
+        titulo: it.necessidadeTitulo ?? 'Prestações de contas',
+      ),
+    );
+  }
+
+  /// Avalia o doador de um match CONCLUIDO (1-5 estrelas, estilo Uber).
+  /// Upsert: se ja avaliou, o dialog abre pre-carregado para edicao.
+  Future<void> _avaliarDoador(Interesse it) async {
+    if (it.doadorId == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => DialogAvaliarDoador(
+        doadorId: it.doadorId!,
+        doadorNome: it.doadorNome ?? 'Doador',
+        existente: _minhasAvaliacoes[it.doadorId!],
+      ),
+    );
+    if (ok == true && mounted) {
+      AppSnackbar.sucesso(context, 'Avaliação enviada. Obrigado! ⭐');
+      _carregarTudo();
+    }
+  }
+
+  /// Abre o perfil publico do doador (novo contrato /usuarios/{id}/perfil-publico).
+  void _verPerfilDoador(Interesse it) {
+    if (it.doadorId == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PerfilPublicoDoadorScreen(
+          doadorId: it.doadorId!,
+          doadorNome: it.doadorNome ?? 'Doador',
+        ),
+      ),
+    );
   }
 
   @override
@@ -561,6 +609,16 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               icon: const Icon(Icons.visibility_outlined),
             ),
             IconButton(
+              tooltip: 'Perfil da ONG (capa, endereço e fotos do local)',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EditarOngScreen(ongId: widget.ong.id),
+                ),
+              ),
+              icon: const Icon(Icons.storefront_outlined),
+            ),
+            IconButton(
               tooltip: 'Meu Perfil',
               onPressed: () => Navigator.push(
                 context,
@@ -608,6 +666,10 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                 children: [
                   _cabecalhoOng(),
                   _statsHeader(),
+                  // Builder: o atalho "Ver pendências" troca para a aba
+                  // Interesses e precisa de um context ABAIXO do
+                  // DefaultTabController criado neste build.
+                  Builder(builder: (ctx) => _bannerPendencias(ctx)),
                   Expanded(
                     child: TabBarView(
                       children: [
@@ -686,10 +748,66 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     );
   }
 
+  // ---- Banner de pendencias de prestacao de contas ----
+  // Ambar quando ha pendencias no prazo; VERMELHO se alguma ja e definitiva
+  // (prazo de 10 dias estourado = -5 pontos no score de transparencia).
+  Widget _bannerPendencias(BuildContext ctx) {
+    if (_pendencias.isEmpty) return const SizedBox.shrink();
+    final temDefinitiva = _pendencias.any((p) => p.definitivo);
+    final cor = temDefinitiva ? AppColors.error : AppColors.warning;
+    final n = _pendencias.length;
+    final titulo = n == 1
+        ? 'Você tem 1 prestação de contas pendente'
+        : 'Você tem $n prestações de contas pendentes';
+    final detalhe = temDefinitiva
+        ? 'Há pendência com prazo esgotado (definitiva): −5 pontos no seu '
+            'score de transparência.'
+        : 'Prazo: 10 dias após marcar a doação como recebida.';
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: cor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cor.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Icon(temDefinitiva ? Icons.error_outline : Icons.warning_amber,
+              color: cor),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(titulo,
+                    style: TextStyle(fontWeight: FontWeight.w700, color: cor)),
+                Text(detalhe,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          TextButton(
+            // Leva para a aba Interesses, onde a lista de pendencias vive.
+            onPressed: () => DefaultTabController.of(ctx).animateTo(1),
+            child: Text('Ver pendências',
+                style: TextStyle(color: cor, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ---- Resumo em numeros (dashboard da ONG) ----
   Widget _statsHeader() {
-    final matches =
-        _interesses.where((i) => i.status == 'ACEITO').length;
+    // Match "fechado" = aceito ou ja concluido (a conclusao nao desfaz o match).
+    final matches = _interesses
+        .where((i) => i.status == 'ACEITO' || i.status == 'CONCLUIDO')
+        .length;
     final totalPix = _doacoes.fold<double>(0, (s, d) => s + d.valor);
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -807,27 +925,228 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     );
   }
 
-  // ---- ABA 2: interesses recebidos ----
+  // ---- ABA 2: interesses recebidos (+ pendencias de prestacao) ----
   Widget _abaInteresses() {
-    if (_interesses.isEmpty) {
+    if (_interesses.isEmpty && _pendencias.isEmpty) {
       return const EmptyState(
         icone: Icons.people_outline,
         mensagem: 'Nenhum interesse recebido ainda',
         detalhe: 'Assim que um doador se interessar, aparece aqui.',
       );
     }
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
-      itemCount: _interesses.length,
-      itemBuilder: (context, i) {
-        final it = _interesses[i];
-        final pendente = it.status == 'PENDENTE';
+      children: [
+        if (_pendencias.isNotEmpty) ...[
+          _tituloSecao('Prestações de contas pendentes'),
+          for (final p in _pendencias) _cardPendencia(p),
+          const SizedBox(height: AppSpacing.md),
+          _tituloSecao('Interesses recebidos'),
+        ],
+        if (_interesses.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(AppSpacing.md),
+            child: Text('Nenhum interesse recebido ainda.'),
+          )
+        else
+          for (final it in _interesses) _cardInteresse(it),
+      ],
+    );
+  }
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+  Widget _tituloSecao(String texto) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Text(
+        texto,
+        style: Theme.of(context)
+            .textTheme
+            .titleMedium
+            ?.copyWith(fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+
+  /// Card de uma pendencia: necessidade + doador + contagem regressiva do
+  /// prazo de 10 dias + atalho para prestar contas na hora.
+  Widget _cardPendencia(PendenciaPrestacao p) {
+    final cor = p.definitivo ? AppColors.error : AppColors.warning;
+    final String prazo;
+    if (p.definitivo) {
+      prazo = 'prazo esgotado — pendência definitiva';
+    } else if (p.diasRestantes == 0) {
+      prazo = 'último dia do prazo!';
+    } else if (p.diasRestantes == 1) {
+      prazo = 'falta 1 dia';
+    } else {
+      prazo = 'faltam ${p.diasRestantes} dias';
+    }
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: cor.withValues(alpha: 0.5)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: cor.withValues(alpha: 0.12),
+              child: Icon(
+                  p.definitivo ? Icons.error_outline : Icons.hourglass_bottom,
+                  color: cor),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(p.necessidadeTitulo ?? 'Doação recebida',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Doador: ${p.doadorNome ?? "-"} • '
+                    'Recebida em ${_formatarDataCurta(p.dataConclusao)}',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: cor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.timer_outlined, size: 14, color: cor),
+                        const SizedBox(width: 4),
+                        Text(prazo,
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: cor)),
+                        if (p.definitivo) ...[
+                          const SizedBox(width: 6),
+                          Text('(−5 pontos de transparência)',
+                              style: TextStyle(fontSize: 12, color: cor)),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: () => _abrirPrestarContas(p.interesseId),
+              icon: const Icon(Icons.receipt_long, size: 18),
+              label: const Text('Prestar contas agora'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Card de um interesse/match, com as acoes do seu status atual.
+  Widget _cardInteresse(Interesse it) {
+    final cs = Theme.of(context).colorScheme;
+    final concluido = it.status == 'CONCLUIDO';
+    final jaAvaliei =
+        it.doadorId != null && _minhasAvaliacoes.containsKey(it.doadorId);
+
+    // Acoes por status (em Wrap: nunca estouram a largura do card).
+    final List<Widget> acoes;
+    switch (it.status) {
+      case 'PENDENTE':
+        acoes = [
+          TextButton.icon(
+            onPressed: () => _recusar(it),
+            icon: const Icon(Icons.close, color: AppColors.error),
+            label: const Text('Recusar',
+                style: TextStyle(color: AppColors.error)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => _aceitar(it),
+            icon: const Icon(Icons.check),
+            label: const Text('Aceitar'),
+          ),
+        ];
+        break;
+      case 'ACEITO':
+        acoes = [
+          OutlinedButton.icon(
+            onPressed: () => _abrirPrestarContas(it.id),
+            icon: const Icon(Icons.receipt_long, size: 18),
+            label: const Text('Prestar contas'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => _verPrestacoes(it),
+            icon: const Icon(Icons.photo_library_outlined, size: 18),
+            label: const Text('Ver prestações'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => _abrirChat(it),
+            icon: const Icon(Icons.chat),
+            label: const Text('Conversar'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => _concluir(it),
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('Doação recebida'),
+          ),
+        ];
+        break;
+      case 'CONCLUIDO':
+        acoes = [
+          OutlinedButton.icon(
+            onPressed: () => _abrirPrestarContas(it.id),
+            icon: const Icon(Icons.receipt_long, size: 18),
+            label: const Text('Prestar contas'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => _verPrestacoes(it),
+            icon: const Icon(Icons.photo_library_outlined, size: 18),
+            label: const Text('Ver prestações'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => _abrirChat(it),
+            icon: const Icon(Icons.chat_outlined, size: 18),
+            label: const Text('Conversar'),
+          ),
+          if (it.doadorId != null) ...[
+            TextButton.icon(
+              onPressed: () => _verPerfilDoador(it),
+              icon: const Icon(Icons.person_search_outlined, size: 18),
+              label: const Text('Ver perfil do doador'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _avaliarDoador(it),
+              icon: Icon(jaAvaliei ? Icons.edit : Icons.star_outline,
+                  size: 18),
+              label:
+                  Text(jaAvaliei ? 'Editar avaliação' : 'Avaliar doador'),
+            ),
+          ],
+        ];
+        break;
+      default:
+        acoes = const [];
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
                 CircleAvatar(
                   backgroundColor: _verde.withValues(alpha: 0.12),
@@ -843,58 +1162,78 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                               const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 2),
                       Text('Interesse em: ${it.necessidadeTitulo ?? "-"}',
-                          style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant)),
+                          style: TextStyle(color: cs.onSurfaceVariant)),
                     ],
                   ),
                 ),
-                if (pendente) ...[
-                  TextButton.icon(
-                    onPressed: () => _recusar(it),
-                    icon: const Icon(Icons.close, color: AppColors.error),
-                    label: const Text('Recusar',
-                        style: TextStyle(color: AppColors.error)),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () => _aceitar(it),
-                    icon: const Icon(Icons.check),
-                    label: const Text('Aceitar'),
-                  ),
-                ] else if (it.status == 'ACEITO') ...[
-                  _statusBadge(it.status),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () => _abrirPrestarContas(it),
-                    icon: const Icon(Icons.receipt_long, size: 18),
-                    label: const Text('Prestar contas'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChatOngScreen(
-                            interesseId: it.id,
-                            titulo: it.doadorNome ?? 'Doador',
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.chat),
-                    label: const Text('Conversar'),
-                  ),
-                ] else
+                if (concluido)
+                  _chipConcluida(it)
+                else if (it.status != 'PENDENTE')
                   _statusBadge(it.status),
               ],
             ),
-          ),
-        );
-      },
+            if (acoes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: acoes,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
+  }
+
+  /// Chip verde do match concluido, com a data em que a doacao foi recebida.
+  Widget _chipConcluida(Interesse it) {
+    final data = _formatarDataCurta(it.dataConclusao);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: _verde.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _verde.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.check_circle, size: 16, color: _verde),
+          const SizedBox(width: 6),
+          Text(
+            data.isNotEmpty ? 'Concluída em $data' : 'Concluída',
+            style: const TextStyle(
+                color: _verde, fontWeight: FontWeight.w700, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _abrirChat(Interesse it) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatOngScreen(
+          interesseId: it.id,
+          titulo: it.doadorNome ?? 'Doador',
+        ),
+      ),
+    );
+  }
+
+  /// Formata uma data ISO como dd/MM/aaaa (ou vazio se nula/invalida).
+  String _formatarDataCurta(String? iso) {
+    if (iso == null) return '';
+    final d = DateTime.tryParse(iso);
+    if (d == null) return '';
+    String dois(int n) => n.toString().padLeft(2, '0');
+    return '${dois(d.day)}/${dois(d.month)}/${d.year}';
   }
 
   // ---- ABA 3: campanhas da ONG ----
