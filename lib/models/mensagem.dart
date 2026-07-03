@@ -25,6 +25,11 @@ class Mensagem {
   final bool lida; // true = ja foi vista pelo outro participante
   final List<ReacaoMsg> reacoes; // 0 a 2 reacoes (uma por lado)
 
+  /// Anexo de imagem (base64) e seu tipo ("imagem"). Uma mensagem pode ser
+  /// so texto, so anexo, ou os dois.
+  final String? anexoBase64;
+  final String? anexoTipo;
+
   const Mensagem({
     required this.id,
     required this.remetente,
@@ -33,6 +38,8 @@ class Mensagem {
     this.dataEnvio,
     this.lida = false,
     this.reacoes = const [],
+    this.anexoBase64,
+    this.anexoTipo,
   });
 
   factory Mensagem.fromJson(Map<String, dynamic> json) {
@@ -46,6 +53,8 @@ class Mensagem {
       reacoes: ((json['reacoes'] as List?) ?? [])
           .map((r) => ReacaoMsg.fromJson(r as Map<String, dynamic>))
           .toList(),
+      anexoBase64: json['anexoBase64'],
+      anexoTipo: json['anexoTipo'],
     );
   }
 }

@@ -20,6 +20,9 @@ dependencies:
   pdf: ^3.11.1              # Geração de relatórios em PDF
   printing: ^5.13.3         # Pré-visualização/impressão de PDF
   shared_preferences: ^2.5.5 # Persistência local (ex.: flag do Modo Feira)
+  file_selector: ^1.0.3      # Seleção de arquivos (fotos) no desktop
+  url_launcher: ^6.3.1       # Abrir links externos (ex.: Google Maps)
+  image: ^4.3.0              # Redimensionar/comprimir fotos antes do upload
 
 dev_dependencies:
   flutter_test:

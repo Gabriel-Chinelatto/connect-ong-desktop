@@ -28,11 +28,13 @@ class MensagemService {
     return data.map((json) => Mensagem.fromJson(json)).toList();
   }
 
-  // Envia uma mensagem no chat do match.
+  // Envia uma mensagem no chat do match. Texto vazio e permitido SE houver
+  // anexo de imagem (anexoBase64 + anexoTipo "imagem").
   Future<void> enviar({
     required int interesseId,
     required String remetente,
     required String conteudo,
+    String? anexoBase64,
   }) async {
     final response = await http.post(
       Uri.parse('${ApiService.baseUrl}/mensagens'),
@@ -41,8 +43,11 @@ class MensagemService {
         'interesseId': interesseId,
         'remetente': remetente,
         'conteudo': conteudo,
+        if (anexoBase64 != null) 'anexoBase64': anexoBase64,
+        if (anexoBase64 != null) 'anexoTipo': 'imagem',
       }),
-    ).timeout(const Duration(seconds: 10));
+      // Timeout maior quando ha anexo (foto base64 no corpo).
+    ).timeout(Duration(seconds: anexoBase64 != null ? 30 : 10));
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       final body = jsonDecode(utf8.decode(response.bodyBytes));

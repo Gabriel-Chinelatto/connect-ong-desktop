@@ -21,6 +21,21 @@ class PerfilPublicoOng {
   final List<AvaliacaoResumo> avaliacoes;
   final List<PrestacaoResumo> prestacoes;
 
+  /// Capa do perfil (base64, proporcao 3:1). Null = sem capa.
+  final String? capaBase64;
+
+  /// Endereco completo em texto (rua, numero, bairro).
+  final String? endereco;
+
+  /// Fotos do local/sede (base64, ate 5).
+  final List<String> fotosLocal;
+
+  /// Streak do ranking: dias como atual 1º lugar (null se nao for o topo).
+  final int? diasNoTopo;
+
+  /// Duracao (em dias) do ultimo reinado encerrado no topo do ranking.
+  final int? ultimoReinadoDias;
+
   const PerfilPublicoOng({
     required this.id,
     required this.nome,
@@ -41,6 +56,11 @@ class PerfilPublicoOng {
     required this.campanhas,
     required this.avaliacoes,
     required this.prestacoes,
+    this.capaBase64,
+    this.endereco,
+    this.fotosLocal = const [],
+    this.diasNoTopo,
+    this.ultimoReinadoDias,
   });
 
   factory PerfilPublicoOng.fromJson(Map<String, dynamic> j) {
@@ -72,6 +92,12 @@ class PerfilPublicoOng {
       campanhas: lista('campanhas', CampanhaResumo.fromJson),
       avaliacoes: lista('avaliacoes', AvaliacaoResumo.fromJson),
       prestacoes: lista('prestacoes', PrestacaoResumo.fromJson),
+      capaBase64: j['capaBase64'] as String?,
+      endereco: j['endereco'] as String?,
+      fotosLocal:
+          ((j['fotosLocal'] as List?) ?? []).whereType<String>().toList(),
+      diasNoTopo: (j['diasNoTopo'] as num?)?.toInt(),
+      ultimoReinadoDias: (j['ultimoReinadoDias'] as num?)?.toInt(),
     );
   }
 }
@@ -149,13 +175,21 @@ class PrestacaoResumo {
   final String titulo;
   final String descricao;
 
+  /// Fotos da prestacao (base64) e valor utilizado, quando informados.
+  final List<String> fotos;
+  final double? valorUtilizado;
+
   const PrestacaoResumo({
     required this.titulo,
     required this.descricao,
+    this.fotos = const [],
+    this.valorUtilizado,
   });
 
   factory PrestacaoResumo.fromJson(Map<String, dynamic> j) => PrestacaoResumo(
         titulo: j['titulo'] ?? '',
         descricao: j['descricao'] ?? '',
+        fotos: ((j['fotos'] as List?) ?? []).whereType<String>().toList(),
+        valorUtilizado: (j['valorUtilizado'] as num?)?.toDouble(),
       );
 }

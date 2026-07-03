@@ -38,6 +38,12 @@ class InteresseService {
     await _mudarStatus(interesseId, 'recusar');
   }
 
+  // ONG marca a doacao do match como recebida (ACEITO -> CONCLUIDO).
+  // Inicia o prazo de 10 dias para a prestacao de contas e notifica o doador.
+  Future<void> concluir(int interesseId) async {
+    await _mudarStatus(interesseId, 'concluir');
+  }
+
   Future<void> _mudarStatus(int interesseId, String acao) async {
     final response = await http.put(
       Uri.parse('${ApiService.baseUrl}/interesses/$interesseId/$acao'),
@@ -45,7 +51,14 @@ class InteresseService {
     ).timeout(const Duration(seconds: 10));
 
     if (response.statusCode != 200) {
-      throw Exception('Erro ao atualizar o interesse');
+      String msg = 'Erro ao atualizar o interesse';
+      try {
+        final body = jsonDecode(utf8.decode(response.bodyBytes));
+        if (body is Map && body['erro'] != null) msg = body['erro'].toString();
+      } catch (_) {
+        // Corpo nao-JSON: mantem a mensagem generica.
+      }
+      throw Exception(msg);
     }
   }
 }
