@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -6,6 +8,9 @@ import '../../models/mensagem.dart';
 import '../../services/mensagem_service.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/imagens.dart';
+import '../../utils/tempo.dart';
+import '../../widgets/visualizador_imagem.dart';
 
 const Color _verde = AppColors.primary;
 
@@ -51,12 +56,22 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
   Timer? _timer;
 
   // Presenca do OUTRO participante (atualizada no mesmo tick do polling).
+  // Usa `ultimoVistoEpoch` (millis UTC) em vez do campo antigo `ultimoVisto`,
+  // que tinha bug de fuso.
   bool _online = false;
-  String? _ultimoVisto;
+  int? _ultimoVistoEpoch;
   bool _digitando = false;
 
   // Throttle do heartbeat de digitacao (no maximo 1x a cada 2s).
   DateTime? _ultimoHeartbeat;
+
+  // Anexo de imagem escolhido, aguardando envio (preview acima do campo).
+  ImagemSelecionada? _anexo;
+  bool _escolhendoAnexo = false;
+
+  // Cache de anexos ja decodificados (id da mensagem -> bytes) para nao
+  // rodar base64Decode a cada rebuild do polling.
+  final Map<int, Uint8List> _anexosDecodificados = {};
 
   @override
   void initState() {
@@ -103,7 +118,7 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
     if (!mounted) return;
     setState(() {
       _online = (s['online'] ?? false) as bool;
-      _ultimoVisto = s['ultimoVisto'] as String?;
+      _ultimoVistoEpoch = (s['ultimoVistoEpoch'] as num?)?.toInt();
       _digitando = (s['digitando'] ?? false) as bool;
     });
   }
@@ -122,14 +137,10 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
   // Texto de presenca exibido abaixo do titulo na AppBar.
   String _textoPresenca() {
     if (_digitando) return 'digitando...';
-    if (_online) return 'online';
-    if (_ultimoVisto != null) {
-      final dt = DateTime.parse(_ultimoVisto!).toLocal();
-      final hh = dt.hour.toString().padLeft(2, '0');
-      final mm = dt.minute.toString().padLeft(2, '0');
-      return 'visto por último às $hh:$mm';
-    }
-    return '';
+    return formatarVistoPorUltimo(
+      online: _online,
+      ultimoVistoEpoch: _ultimoVistoEpoch,
+    );
   }
 
   void _irParaOFim() {
@@ -144,20 +155,48 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
     });
   }
 
+  // Abre o seletor de arquivos, comprime a imagem e a deixa pronta p/ envio.
+  Future<void> _escolherAnexo() async {
+    if (_escolhendoAnexo) return;
+    _escolhendoAnexo = true;
+    try {
+      final img = await escolherImagem();
+      if (img != null && mounted) {
+        setState(() => _anexo = img);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ApiService.mensagemAmigavel(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      _escolhendoAnexo = false;
+    }
+  }
+
   Future<void> _enviar() async {
     final texto = _controller.text.trim();
-    if (texto.isEmpty) return;
+    final anexo = _anexo;
+    // Precisa de texto OU anexo (mesma regra do backend).
+    if (texto.isEmpty && anexo == null) return;
+    if (_enviando) return;
     setState(() => _enviando = true);
     try {
       await _service.enviar(
         interesseId: widget.interesseId,
         remetente: _meuRemetente,
         conteudo: texto,
+        anexoBase64: anexo?.base64,
       );
       // Se o usuario saiu da tela durante o envio, o _controller ja foi
       // descartado no dispose(): mexer nele lancaria "used after disposed".
       if (!mounted) return;
       _controller.clear();
+      setState(() => _anexo = null);
       await _carregar();
     } catch (e) {
       if (mounted) {
@@ -222,6 +261,21 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
     }
   }
 
+  // Decodifica (uma vez, com cache) o anexo base64 de uma mensagem.
+  // Retorna null se nao houver anexo ou se o base64 for invalido.
+  Uint8List? _bytesAnexo(Mensagem m) {
+    if (m.anexoBase64 == null || m.anexoBase64!.isEmpty) return null;
+    final cache = _anexosDecodificados[m.id];
+    if (cache != null) return cache;
+    try {
+      final bytes = base64Decode(m.anexoBase64!);
+      _anexosDecodificados[m.id] = bytes;
+      return bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Widget _bolha(Mensagem m) {
     final minha = m.remetente == _meuRemetente;
     final cs = Theme.of(context).colorScheme;
@@ -255,13 +309,31 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    m.conteudo,
-                    style: TextStyle(
-                      color: minha ? Colors.white : cs.onSurface,
-                      height: 1.3,
+                  // Anexo de imagem (tap = visualizacao grande).
+                  if (_bytesAnexo(m) != null) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: GestureDetector(
+                        onTap: () =>
+                            mostrarImagemGrande(context, _bytesAnexo(m)!),
+                        child: Image.memory(
+                          _bytesAnexo(m)!,
+                          width: 220,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (m.conteudo.isNotEmpty) const SizedBox(height: 6),
+                  ],
+                  if (m.conteudo.isNotEmpty)
+                    Text(
+                      m.conteudo,
+                      style: TextStyle(
+                        color: minha ? Colors.white : cs.onSurface,
+                        height: 1.3,
+                      ),
+                    ),
                   // Check de "visto" apenas nas MINHAS mensagens.
                   if (minha)
                     Padding(
@@ -355,10 +427,42 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
                             itemBuilder: (context, i) => _bolha(_mensagens[i]),
                           ),
               ),
+              // Preview do anexo escolhido, acima da barra de digitacao.
+              if (_anexo != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.memory(
+                          _anexo!.bytes,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(child: Text('Foto pronta para enviar')),
+                      IconButton(
+                        tooltip: 'Remover anexo',
+                        icon: const Icon(Icons.close),
+                        onPressed:
+                            _enviando ? null : () => setState(() => _anexo = null),
+                      ),
+                    ],
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
+                    IconButton(
+                      tooltip: 'Anexar imagem',
+                      icon: const Icon(Icons.attach_file),
+                      onPressed: _enviando ? null : _escolherAnexo,
+                    ),
                     Expanded(
                       child: TextField(
                         controller: _controller,

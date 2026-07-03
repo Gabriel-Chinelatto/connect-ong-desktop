@@ -1,8 +1,14 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/perfil_publico_ong.dart';
 import '../../services/perfil_publico_service.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/visualizador_imagem.dart';
+import '../../widgets/feedback/app_snackbar.dart';
 import '../../widgets/feedback/empty_state.dart';
 
 /// Pre-visualizacao de como a ONG aparece publicamente para os doadores
@@ -24,6 +30,8 @@ class PerfilPublicoOngScreen extends StatefulWidget {
 class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
   final PerfilPublicoService _service = PerfilPublicoService();
   PerfilPublicoOng? _perfil;
+  Uint8List? _capaBytes;
+  List<Uint8List> _fotosLocalBytes = [];
   bool _carregando = true;
   bool _erro = false;
 
@@ -31,6 +39,15 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
   void initState() {
     super.initState();
     _carregar();
+  }
+
+  Uint8List? _decodificar(String? base64) {
+    if (base64 == null || base64.isEmpty) return null;
+    try {
+      return base64Decode(base64);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _carregar() async {
@@ -43,6 +60,9 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
       if (!mounted) return;
       setState(() {
         _perfil = p;
+        _capaBytes = _decodificar(p.capaBase64);
+        _fotosLocalBytes =
+            p.fotosLocal.map(_decodificar).whereType<Uint8List>().toList();
         _carregando = false;
       });
     } catch (_) {
@@ -91,6 +111,12 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
                             _linha(Icons.badge_outlined,
                                 'CNPJ: ${_perfil!.cnpj}'),
                         ]),
+                        if (_perfil!.endereco != null &&
+                            _perfil!.endereco!.isNotEmpty)
+                          _secaoEndereco(_perfil!.endereco!),
+                        if (_fotosLocalBytes.isNotEmpty)
+                          _secao('Fotos do local', Icons.photo_library_outlined,
+                              [_galeriaLocal()]),
                         if (_perfil!.campanhas.isNotEmpty)
                           _secao('Campanhas', Icons.campaign_outlined, [
                             for (final c in _perfil!.campanhas) _campanha(c),
@@ -141,68 +167,196 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
 
   Widget _cabecalho(PerfilPublicoOng p) {
     final inicial = p.nome.isNotEmpty ? p.nome[0].toUpperCase() : '?';
+    final miolo = Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 34,
+            backgroundColor: AppColors.primary,
+            child: Text(inicial,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(p.nome,
+                          style: const TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.bold)),
+                    ),
+                    if (p.verificada) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.verified,
+                          color: AppColors.info, size: 20),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(p.cidade,
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    for (int i = 0; i < 5; i++)
+                      Icon(
+                          i < p.notaMedia.round()
+                              ? Icons.star
+                              : Icons.star_border,
+                          size: 18,
+                          color: Colors.amber),
+                    const SizedBox(width: 8),
+                    Text(p.totalAvaliacoes > 0
+                        ? '${p.notaMedia.toStringAsFixed(1)} (${p.totalAvaliacoes})'
+                        : 'Sem avaliacoes'),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _chipTransparencia(p),
+                    if (_chipStreak(p) != null) _chipStreak(p)!,
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 34,
-              backgroundColor: AppColors.primary,
-              child: Text(inicial,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w700)),
-            ),
-            const SizedBox(width: 18),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+      clipBehavior: Clip.antiAlias,
+      child: _capaBytes == null
+          ? miolo
+          : Column(
+              children: [
+                // Capa 3:1 com gradiente escuro embaixo para legibilidade do
+                // conteudo que vem logo abaixo.
+                AspectRatio(
+                  aspectRatio: 3,
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      Flexible(
-                        child: Text(p.nome,
-                            style: const TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.bold)),
+                      Image.memory(_capaBytes!,
+                          fit: BoxFit.cover, gaplessPlayback: true),
+                      const DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black54,
+                            ],
+                          ),
+                        ),
                       ),
-                      if (p.verificada) ...[
-                        const SizedBox(width: 6),
-                        const Icon(Icons.verified,
-                            color: AppColors.info, size: 20),
-                      ],
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(p.cidade,
-                      style: TextStyle(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      for (int i = 0; i < 5; i++)
-                        Icon(
-                            i < p.notaMedia.round()
-                                ? Icons.star
-                                : Icons.star_border,
-                            size: 18,
-                            color: Colors.amber),
-                      const SizedBox(width: 8),
-                      Text(p.totalAvaliacoes > 0
-                          ? '${p.notaMedia.toStringAsFixed(1)} (${p.totalAvaliacoes})'
-                          : 'Sem avaliacoes'),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  _chipTransparencia(p),
-                ],
-              ),
+                ),
+                miolo,
+              ],
             ),
-          ],
+    );
+  }
+
+  /// Chip do streak do ranking: 🔥 "Há N dias em 1º lugar" quando a ONG e o
+  /// atual topo; senao "Já ficou N dias em 1º lugar" do ultimo reinado.
+  Widget? _chipStreak(PerfilPublicoOng p) {
+    final bool atual = p.diasNoTopo != null && p.diasNoTopo! > 0;
+    final bool passado =
+        !atual && p.ultimoReinadoDias != null && p.ultimoReinadoDias! > 0;
+    if (!atual && !passado) return null;
+
+    final int dias = atual ? p.diasNoTopo! : p.ultimoReinadoDias!;
+    final String texto = atual
+        ? 'Há $dias ${dias == 1 ? "dia" : "dias"} em 1º lugar'
+        : 'Já ficou $dias ${dias == 1 ? "dia" : "dias"} em 1º lugar';
+    final Color cor = atual ? const Color(0xFFF59E0B) : AppColors.textSecondary;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: cor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('🔥', style: TextStyle(fontSize: 14)),
+          const SizedBox(width: 6),
+          Text(texto,
+              style: TextStyle(
+                  color: cor, fontWeight: FontWeight.w700, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  // Secao de endereco com botao "Abrir no Maps".
+  Widget _secaoEndereco(String endereco) {
+    return _secao('Endereço', Icons.place_outlined, [
+      Text(endereco, style: const TextStyle(height: 1.4)),
+      const SizedBox(height: 10),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: OutlinedButton.icon(
+          onPressed: () => _abrirNoMaps(endereco),
+          icon: const Icon(Icons.map_outlined, size: 18),
+          label: const Text('Abrir no Maps'),
         ),
       ),
+    ]);
+  }
+
+  Future<void> _abrirNoMaps(String endereco) async {
+    final url = Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(endereco)}');
+    try {
+      final ok = await launchUrl(url, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        AppSnackbar.erro(context, 'Não foi possível abrir o mapa.');
+      }
+    } catch (_) {
+      if (mounted) AppSnackbar.erro(context, 'Não foi possível abrir o mapa.');
+    }
+  }
+
+  // Galeria das fotos do local (miniaturas clicaveis -> visualizacao grande).
+  Widget _galeriaLocal() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final bytes in _fotosLocalBytes)
+          Tooltip(
+            message: 'Ampliar foto',
+            child: GestureDetector(
+              onTap: () => mostrarImagemGrande(context, bytes),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.memory(
+                  bytes,
+                  width: 110,
+                  height: 110,
+                  fit: BoxFit.cover,
+                  gaplessPlayback: true,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
