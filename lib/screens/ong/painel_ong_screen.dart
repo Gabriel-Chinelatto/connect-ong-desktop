@@ -7,7 +7,9 @@ import '../../models/necessidade.dart';
 import '../../models/interesse.dart';
 import '../../models/campanha.dart';
 import '../../models/atividade.dart';
+import '../../models/doacao_financeira.dart';
 import '../../services/api_service.dart';
+import '../../services/doacao_financeira_service.dart';
 import '../../services/ong_service.dart';
 import '../../services/necessidade_service.dart';
 import '../../services/interesse_service.dart';
@@ -213,6 +215,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   final InteresseService _interesseService = InteresseService();
   final CampanhaService _campanhaService = CampanhaService();
   final AtividadeService _atividadeService = AtividadeService();
+  final DoacaoFinanceiraService _doacaoFinanceiraService =
+      DoacaoFinanceiraService();
 
   List<Necessidade> _necessidades = [];
   List<Interesse> _interesses = [];
@@ -220,10 +224,39 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   List<Atividade> _atividades = [];
   bool _carregando = true;
 
+  // Aba "Doações": estados proprios (loading/erro/lista) para a aba poder
+  // falhar e ser recarregada sem derrubar o resto do painel.
+  List<DoacaoFinanceira> _doacoes = [];
+  bool _carregandoDoacoes = true;
+  String? _erroDoacoes;
+
   @override
   void initState() {
     super.initState();
     _carregarTudo();
+    _carregarDoacoes();
+  }
+
+  /// Carrega as doacoes PIX recebidas pela ONG (aba "Doações").
+  Future<void> _carregarDoacoes() async {
+    setState(() {
+      _carregandoDoacoes = true;
+      _erroDoacoes = null;
+    });
+    try {
+      final ds = await _doacaoFinanceiraService.listarPorOng(widget.ong.id);
+      if (!mounted) return;
+      setState(() {
+        _doacoes = ds;
+        _carregandoDoacoes = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _carregandoDoacoes = false;
+        _erroDoacoes = ApiService.mensagemAmigavel(e);
+      });
+    }
   }
 
   Future<void> _carregarTudo() async {
@@ -448,7 +481,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           title: Text('Painel — ${widget.ong.nome}'),
@@ -532,6 +565,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               Tab(text: 'Necessidades (${_necessidades.length})'),
               Tab(text: 'Interesses (${_interesses.length})'),
               Tab(text: 'Campanhas (${_campanhas.length})'),
+              Tab(text: 'Doações (${_doacoes.length})'),
               Tab(text: 'Atividades (${_atividades.length})'),
             ],
           ),
@@ -553,6 +587,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                         _abaNecessidades(),
                         _abaInteresses(),
                         _abaCampanhas(),
+                        _abaDoacoes(),
                         _abaTimeline(),
                       ],
                     ),
@@ -871,7 +906,154 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     );
   }
 
-  // ---- ABA 4: timeline (feed global de atividades da plataforma) ----
+  // ---- ABA 4: doacoes PIX recebidas pela ONG ----
+  Widget _abaDoacoes() {
+    if (_carregandoDoacoes) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_erroDoacoes != null) {
+      return EmptyState(
+        icone: Icons.cloud_off_outlined,
+        mensagem: 'Não foi possível carregar as doações',
+        detalhe: _erroDoacoes,
+        acaoRotulo: 'Tentar de novo',
+        onAcao: _carregarDoacoes,
+      );
+    }
+    if (_doacoes.isEmpty) {
+      return const EmptyState(
+        icone: Icons.volunteer_activism_outlined,
+        mensagem: 'Nenhuma doação recebida ainda',
+        detalhe: 'As doações PIX feitas pelos doadores aparecem aqui.',
+      );
+    }
+    final total = _doacoes.fold<double>(0, (soma, d) => soma + d.valor);
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        _cardTotalDoacoes(total),
+        const SizedBox(height: 16),
+        for (final d in _doacoes) _cardDoacao(d),
+      ],
+    );
+  }
+
+  // Destaque com o total somado das doacoes recebidas.
+  Widget _cardTotalDoacoes(double total) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [_verde, AppColors.primaryDark],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.savings_outlined,
+                color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Total recebido em doações PIX',
+                  style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const SizedBox(height: 2),
+              Text(
+                _formatarReal(total),
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            '${_doacoes.length} ${_doacoes.length == 1 ? "doação" : "doações"}',
+            style: const TextStyle(
+                color: Colors.white70, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cardDoacao(DoacaoFinanceira d) {
+    final confirmada = d.status.toUpperCase() == 'CONFIRMADO';
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: CircleAvatar(
+          backgroundColor: _verde.withValues(alpha: 0.12),
+          child: const Icon(Icons.pix, color: _verde),
+        ),
+        title: Text(d.doadorNome,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(
+          _formatarData(d.data),
+          style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant),
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(_formatarReal(d.valor),
+                style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: _verde)),
+            const SizedBox(height: 2),
+            Text(
+              confirmada ? 'Confirmada' : d.status,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: confirmada
+                    ? AppColors.success
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Formata um valor em reais no padrao pt-BR (ex.: R$ 1.234,56).
+  String _formatarReal(double valor) {
+    final partes = valor.toStringAsFixed(2).split('.');
+    final inteiro = partes[0];
+    final buf = StringBuffer();
+    for (int i = 0; i < inteiro.length; i++) {
+      if (i > 0 && (inteiro.length - i) % 3 == 0) buf.write('.');
+      buf.write(inteiro[i]);
+    }
+    return 'R\$ $buf,${partes[1]}';
+  }
+
+  /// Formata a data como dd/mm/aaaa hh:mm (ou "—" se ausente).
+  String _formatarData(DateTime? d) {
+    if (d == null) return '—';
+    String dois(int n) => n.toString().padLeft(2, '0');
+    return '${dois(d.day)}/${dois(d.month)}/${d.year} às '
+        '${dois(d.hour)}:${dois(d.minute)}';
+  }
+
+  // ---- ABA 5: timeline (feed global de atividades da plataforma) ----
   Widget _abaTimeline() {
     if (_atividades.isEmpty) {
       return const EmptyState(
