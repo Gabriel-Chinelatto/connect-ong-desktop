@@ -27,6 +27,7 @@ import 'ranking_transparencia_screen.dart';
 import 'conquistas_screen.dart';
 import 'perfil_screen.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
 import '../../utils/categorias.dart';
 import '../../config/config_controller.dart';
 import '../../widgets/notificacao_bell.dart';
@@ -230,6 +231,9 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   bool _carregandoDoacoes = true;
   String? _erroDoacoes;
 
+  // Selo "verificada" do cabecalho (best-effort, via perfil publico).
+  bool _verificada = false;
+
   @override
   void initState() {
     super.initState();
@@ -280,6 +284,11 @@ class _PainelConteudoState extends State<_PainelConteudo> {
       } catch (_) {
         ativs = [];
       }
+      // Selo "verificada" do cabecalho — tambem best-effort.
+      try {
+        final perfil = await PerfilPublicoService().buscar(widget.ong.id);
+        _verificada = perfil.verificada;
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _necessidades = nec;
@@ -484,11 +493,11 @@ class _PainelConteudoState extends State<_PainelConteudo> {
       length: 5,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Painel — ${widget.ong.nome}'),
+          title: const Text('Painel da ONG'),
           actions: [
             const NotificacaoBell(),
             IconButton(
-              tooltip: 'Relatorio PDF',
+              tooltip: 'Relatório PDF',
               onPressed: _gerarRelatorioPdf,
               icon: const Icon(Icons.picture_as_pdf_outlined),
             ),
@@ -503,7 +512,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               icon: const Icon(Icons.public),
             ),
             IconButton(
-              tooltip: 'Ranking de Transparencia',
+              tooltip: 'Ranking de Transparência',
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -523,7 +532,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               icon: const Icon(Icons.emoji_events_outlined),
             ),
             IconButton(
-              tooltip: 'Ver meu perfil publico',
+              tooltip: 'Ver meu perfil público',
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -573,6 +582,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _abrirFormPublicar,
           backgroundColor: _verde,
+          foregroundColor: Colors.white,
           icon: const Icon(Icons.add),
           label: const Text('Publicar necessidade'),
         ),
@@ -580,6 +590,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
             ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
+                  _cabecalhoOng(),
                   _statsHeader(),
                   Expanded(
                     child: TabBarView(
@@ -598,12 +609,75 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     );
   }
 
+  // ---- Cabecalho: identidade da ONG (nome + selo + contexto) ----
+  Widget _cabecalhoOng() {
+    final tt = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    final inicial = widget.ong.nome.isNotEmpty
+        ? widget.ong.nome[0].toUpperCase()
+        : '?';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 0),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: _verde,
+            child: Text(inicial,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        widget.ong.nome,
+                        overflow: TextOverflow.ellipsis,
+                        style: tt.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (_verificada) ...[
+                      const SizedBox(width: 6),
+                      const Tooltip(
+                        message: 'ONG verificada',
+                        child: Icon(Icons.verified,
+                            color: AppColors.info, size: 20),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Painel administrativo • ${widget.ong.email}',
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ---- Resumo em numeros (dashboard da ONG) ----
   Widget _statsHeader() {
     final matches =
         _interesses.where((i) => i.status == 'ACEITO').length;
+    final totalPix = _doacoes.fold<double>(0, (s, d) => s + d.valor);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xs),
       child: Row(
         children: [
           _statMini(Icons.campaign, '${_necessidades.length}',
@@ -614,6 +688,9 @@ class _PainelConteudoState extends State<_PainelConteudo> {
           const SizedBox(width: 14),
           _statMini(Icons.handshake, '$matches', 'Matches fechados',
               Colors.pink.shade400),
+          const SizedBox(width: 14),
+          _statMini(Icons.savings_outlined, _formatarReal(totalPix),
+              'Recebido em PIX', AppColors.warning),
         ],
       ),
     );
@@ -623,10 +700,12 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     final cs = Theme.of(context).colorScheme;
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: cs.surface,
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.5)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -646,16 +725,25 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               child: Icon(icone, color: cor),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(numero,
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold)),
-                Text(rotulo,
-                    style: TextStyle(
-                        color: cs.onSurfaceVariant, fontSize: 12)),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // FittedBox evita overflow com valores longos (ex.: R$).
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(numero,
+                        style: const TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold)),
+                  ),
+                  Text(rotulo,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: cs.onSurfaceVariant, fontSize: 12)),
+                ],
+              ),
             ),
           ],
         ),
@@ -673,7 +761,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       itemCount: _necessidades.length,
       itemBuilder: (context, i) {
         final n = _necessidades[i];
@@ -713,7 +801,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       itemCount: _interesses.length,
       itemBuilder: (context, i) {
         final it = _interesses[i];
@@ -798,13 +886,16 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.xs),
           child: Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text('Suas campanhas de arrecadação',
-                    style:
-                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
               ),
               ElevatedButton.icon(
                 onPressed: _abrirFormCampanha,
@@ -822,7 +913,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                   detalhe: 'Clique em "Nova campanha" para arrecadar.',
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
                   itemCount: _campanhas.length,
                   itemBuilder: (context, i) => _cardCampanha(_campanhas[i]),
                 ),
@@ -929,7 +1020,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     }
     final total = _doacoes.fold<double>(0, (soma, d) => soma + d.valor);
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         _cardTotalDoacoes(total),
         const SizedBox(height: 16),
@@ -941,7 +1032,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   // Destaque com o total somado das doacoes recebidas.
   Widget _cardTotalDoacoes(double total) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [_verde, AppColors.primaryDark],
@@ -1062,7 +1153,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
       );
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       itemCount: _atividades.length,
       itemBuilder: (context, i) => _cardAtividade(_atividades[i]),
     );

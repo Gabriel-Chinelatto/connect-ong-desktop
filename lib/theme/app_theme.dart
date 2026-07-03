@@ -54,8 +54,13 @@ class AppTheme {
       cardTheme: CardThemeData(
         elevation: 0,
         color: surface,
+        // Contorno sutil no lugar de sombra: define o card sobre o fundo
+        // tanto no claro quanto no escuro, com cara mais "flat"/profissional.
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: escuro ? Colors.white12 : const Color(0x14000000),
+          ),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
