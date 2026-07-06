@@ -2,13 +2,12 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/perfil_publico_ong.dart';
 import '../../services/perfil_publico_service.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/app_links.dart';
 import '../../widgets/visualizador_imagem.dart';
-import '../../widgets/feedback/app_snackbar.dart';
 import '../../widgets/feedback/empty_state.dart';
 
 /// Pre-visualizacao de como a ONG aparece publicamente para os doadores
@@ -320,17 +319,12 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
     ]);
   }
 
+  // Abre o endereco no Google Maps. No desktop/web o launch pode falhar;
+  // o helper degrada copiando o link para a area de transferencia.
   Future<void> _abrirNoMaps(String endereco) async {
     final url = Uri.parse(
         'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(endereco)}');
-    try {
-      final ok = await launchUrl(url, mode: LaunchMode.externalApplication);
-      if (!ok && mounted) {
-        AppSnackbar.erro(context, 'Não foi possível abrir o mapa.');
-      }
-    } catch (_) {
-      if (mounted) AppSnackbar.erro(context, 'Não foi possível abrir o mapa.');
-    }
+    await abrirLinkExterno(context, url);
   }
 
   // Galeria das fotos do local (miniaturas clicaveis -> visualizacao grande).
