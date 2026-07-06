@@ -10,15 +10,25 @@
 //   painel        -> Painel aba Interesses (chip Concluida, avaliar doador,
 //                    banner de pendencias de prestacao)
 //   necessidades  -> Painel aba Necessidades (banner de pendencias no topo)
-//   chat          -> ChatOngScreen do match 8 (anexo de imagem)
+//   chat          -> ChatOngScreen do match 8 (cabecalho clicavel do doador)
 //   perfil-ong    -> preview do perfil publico (capa/streak/Maps/galeria)
+//   perfil-doador -> perfil publico do doador 18 (botao Bloquear/Desbloquear)
+//   bloqueados    -> lista de doadores bloqueados (Configuracoes)
+//   configuracoes -> central de configuracoes (salvar em lote)
+//   cadastro      -> cadastro de ONG (dropdown UF + autocomplete de cidade)
+//   editar-ong    -> edicao do perfil da ONG (UF/cidade por selecao)
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'screens/auth/cadastro_ong_screen.dart';
 import 'screens/ong/chat_ong_screen.dart';
+import 'screens/ong/configuracoes_screen.dart';
+import 'screens/ong/doadores_bloqueados_screen.dart';
+import 'screens/ong/editar_ong_screen.dart';
 import 'screens/ong/painel_ong_screen.dart';
+import 'screens/ong/perfil_publico_doador_screen.dart';
 import 'screens/ong/perfil_publico_ong_screen.dart';
 import 'services/api_service.dart';
 import 'theme/app_theme.dart';
@@ -66,10 +76,22 @@ class _HarnessApp extends StatelessWidget {
       case 'chat':
         return const ChatOngScreen(
           interesseId: 8,
-          titulo: 'Fraldas geriatricas — Joao Pereira',
+          titulo: 'Joao Pereira',
+          doadorId: 18,
         );
       case 'perfil-ong':
         return const PerfilPublicoOngScreen(ongId: 33, ongNome: 'Lar Viva');
+      case 'perfil-doador':
+        return const PerfilPublicoDoadorScreen(
+            doadorId: 18, doadorNome: 'Joao Pereira');
+      case 'bloqueados':
+        return const DoadoresBloqueadosScreen();
+      case 'configuracoes':
+        return const ConfiguracoesScreen();
+      case 'cadastro':
+        return const CadastroOngScreen();
+      case 'editar-ong':
+        return const EditarOngScreen(ongId: 33);
       case 'painel':
       default:
         return const PainelOngScreen(

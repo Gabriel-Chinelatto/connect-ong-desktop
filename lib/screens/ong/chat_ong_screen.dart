@@ -5,12 +5,15 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../models/mensagem.dart';
+import '../../services/bloqueio_service.dart';
 import '../../services/mensagem_service.dart';
 import '../../services/api_service.dart';
+import '../../services/perfil_publico_doador_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/imagens.dart';
 import '../../utils/tempo.dart';
 import '../../widgets/visualizador_imagem.dart';
+import 'perfil_publico_doador_screen.dart';
 
 const Color _verde = AppColors.primary;
 
@@ -29,14 +32,27 @@ const List<String> _emojiCodigos = ['LIKE', 'LOVE', 'LAUGH', 'WOW', 'SAD', 'PRAY
 
 /// Tela de chat da ONG com um doador (dentro de um match aceito).
 /// Atualiza automaticamente a cada 2 segundos (polling).
+///
+/// O cabeçalho mostra avatar + nome do doador e é clicável (abre o perfil
+/// público, de onde dá para bloquear). Se a ONG bloqueou o doador, o envio de
+/// mensagens fica desabilitado com um aviso discreto.
 class ChatOngScreen extends StatefulWidget {
   final int interesseId;
   final String titulo;
+
+  /// Id do doador (para o perfil clicável e o estado de bloqueio).
+  /// Opcional para degradar bem com chamadores antigos.
+  final int? doadorId;
+
+  /// Estado inicial do bloqueio (vindo do match, campo `bloqueadoPelaOng`).
+  final bool bloqueadoPelaOng;
 
   const ChatOngScreen({
     super.key,
     required this.interesseId,
     required this.titulo,
+    this.doadorId,
+    this.bloqueadoPelaOng = false,
   });
 
   @override
@@ -73,11 +89,20 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
   // rodar base64Decode a cada rebuild do polling.
   final Map<int, Uint8List> _anexosDecodificados = {};
 
+  // Estado do bloqueio do doador pela ONG (inicia com o valor do match e e
+  // reconferido via GET /bloqueios; ausencia/erro degrada p/ nao bloqueado).
+  late bool _bloqueado = widget.bloqueadoPelaOng;
+
+  // Foto do doador para o avatar do cabecalho (best-effort).
+  Uint8List? _fotoDoador;
+
   @override
   void initState() {
     super.initState();
     _carregar(primeira: true);
     _carregarStatus();
+    _carregarDoador();
+    _carregarBloqueio();
     _timer = Timer.periodic(
       const Duration(seconds: 2),
       (_) {
@@ -85,6 +110,49 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
         _carregarStatus();
       },
     );
+  }
+
+  // Busca a foto do doador para o avatar do cabecalho. Silencioso em erro:
+  // sem foto o avatar mostra a inicial do nome.
+  Future<void> _carregarDoador() async {
+    final id = widget.doadorId;
+    if (id == null) return;
+    try {
+      final p = await PerfilPublicoDoadorService().buscar(id);
+      if (!mounted) return;
+      if (p.fotoBase64 != null && p.fotoBase64!.isNotEmpty) {
+        setState(() => _fotoDoador = base64Decode(p.fotoBase64!));
+      }
+    } catch (_) {}
+  }
+
+  // Reconfere na lista da ONG se este doador esta bloqueado. Best-effort:
+  // em erro mantem o estado atual (nao quebra com backend antigo).
+  Future<void> _carregarBloqueio() async {
+    final id = widget.doadorId;
+    if (id == null) return;
+    try {
+      final lista = await BloqueioService().listar();
+      if (!mounted) return;
+      setState(() => _bloqueado = lista.any((b) => b.doadorId == id));
+    } catch (_) {}
+  }
+
+  // Abre o perfil publico do doador (de onde da para bloquear/desbloquear);
+  // ao voltar, reconfere o estado de bloqueio.
+  Future<void> _abrirPerfilDoador() async {
+    final id = widget.doadorId;
+    if (id == null) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PerfilPublicoDoadorScreen(
+          doadorId: id,
+          doadorNome: widget.titulo,
+        ),
+      ),
+    );
+    if (mounted) _carregarBloqueio();
   }
 
   @override
@@ -179,6 +247,7 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
   }
 
   Future<void> _enviar() async {
+    if (_bloqueado) return; // envio desabilitado enquanto o doador esta bloqueado
     final texto = _controller.text.trim();
     final anexo = _anexo;
     // Precisa de texto OU anexo (mesma regra do backend).
@@ -378,27 +447,97 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
     );
   }
 
+  /// Cabecalho da AppBar: avatar (foto/inicial) + nome do doador + presenca.
+  /// Clicavel quando ha doadorId (abre o perfil publico do doador).
+  Widget _cabecalhoDoador() {
+    final cs = Theme.of(context).colorScheme;
+    final inicial =
+        widget.titulo.isNotEmpty ? widget.titulo[0].toUpperCase() : '?';
+    final conteudo = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(
+          radius: 17,
+          backgroundColor: _verde,
+          backgroundImage:
+              _fotoDoador != null ? MemoryImage(_fotoDoador!) : null,
+          child: _fotoDoador == null
+              ? Text(inicial,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700))
+              : null,
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(widget.titulo, overflow: TextOverflow.ellipsis),
+              if (_textoPresenca().isNotEmpty)
+                Text(
+                  _textoPresenca(),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+    if (widget.doadorId == null) return conteudo;
+    return Tooltip(
+      message: 'Ver perfil do doador',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: _abrirPerfilDoador,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: conteudo,
+        ),
+      ),
+    );
+  }
+
+  // Aviso discreto no lugar da barra de digitacao quando o doador esta
+  // bloqueado pela ONG.
+  Widget _avisoBloqueado() {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.block, size: 16, color: cs.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Você bloqueou este doador — desbloqueie para enviar mensagens.',
+                style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Conversa — ${widget.titulo}'),
-            if (_textoPresenca().isNotEmpty)
-              Text(
-                _textoPresenca(),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurfaceVariant,
-                ),
-              ),
-          ],
-        ),
+        titleSpacing: 4,
+        title: _cabecalhoDoador(),
       ),
       body: Center(
         child: ConstrainedBox(
@@ -428,7 +567,7 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
                           ),
               ),
               // Preview do anexo escolhido, acima da barra de digitacao.
-              if (_anexo != null)
+              if (_anexo != null && !_bloqueado)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
                   child: Row(
@@ -454,6 +593,9 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
                     ],
                   ),
                 ),
+              if (_bloqueado)
+                _avisoBloqueado()
+              else
               Padding(
                 padding: const EdgeInsets.all(12),
                 child: Row(

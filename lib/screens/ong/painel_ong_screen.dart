@@ -1163,6 +1163,23 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                       const SizedBox(height: 2),
                       Text('Interesse em: ${it.necessidadeTitulo ?? "-"}',
                           style: TextStyle(color: cs.onSurfaceVariant)),
+                      // Aviso discreto: a ONG bloqueou este doador (o envio
+                      // de mensagens fica desabilitado no chat).
+                      if (it.bloqueadoPelaOng) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.block,
+                                size: 14, color: cs.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text('Você bloqueou este doador',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: cs.onSurfaceVariant)),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -1215,16 +1232,20 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     );
   }
 
-  void _abrirChat(Interesse it) {
-    Navigator.push(
+  Future<void> _abrirChat(Interesse it) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ChatOngScreen(
           interesseId: it.id,
           titulo: it.doadorNome ?? 'Doador',
+          doadorId: it.doadorId,
+          bloqueadoPelaOng: it.bloqueadoPelaOng,
         ),
       ),
     );
+    // O bloqueio pode ter mudado dentro do chat/perfil: recarrega os matches.
+    if (mounted) _carregarTudo();
   }
 
   /// Formata uma data ISO como dd/MM/aaaa (ou vazio se nula/invalida).

@@ -12,6 +12,10 @@ class Interesse {
   /// Quando a ONG marcou a doação como recebida (ISO, só em CONCLUIDO).
   final String? dataConclusao;
 
+  /// true quando a ONG bloqueou este doador (contrato novo do
+  /// GET /interesses?ongId=). Campo ausente (backend antigo) = não bloqueado.
+  final bool bloqueadoPelaOng;
+
   const Interesse({
     required this.id,
     required this.status,
@@ -22,6 +26,7 @@ class Interesse {
     this.ongId,
     this.ongNome,
     this.dataConclusao,
+    this.bloqueadoPelaOng = false,
   });
 
   factory Interesse.fromJson(Map<String, dynamic> json) {
@@ -35,6 +40,7 @@ class Interesse {
       ongId: json['ongId'],
       ongNome: json['ongNome'],
       dataConclusao: json['dataConclusao'],
+      bloqueadoPelaOng: json['bloqueadoPelaOng'] == true,
     );
   }
 }

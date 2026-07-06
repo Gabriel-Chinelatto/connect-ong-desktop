@@ -4,9 +4,12 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../models/perfil_publico_doador.dart';
+import '../../services/api_service.dart';
+import '../../services/bloqueio_service.dart';
 import '../../services/perfil_publico_doador_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
+import '../../widgets/feedback/app_snackbar.dart';
 import '../../widgets/feedback/empty_state.dart';
 
 /// Perfil publico de um doador, visto pela ONG (contrato
@@ -30,10 +33,16 @@ class PerfilPublicoDoadorScreen extends StatefulWidget {
 
 class _PerfilPublicoDoadorScreenState extends State<PerfilPublicoDoadorScreen> {
   final PerfilPublicoDoadorService _service = PerfilPublicoDoadorService();
+  final BloqueioService _bloqueioService = BloqueioService();
   PerfilPublicoDoador? _perfil;
   Uint8List? _fotoBytes;
   bool _carregando = true;
   bool _erro = false;
+
+  /// Estado do bloqueio deste doador pela ONG logada (GET /bloqueios).
+  /// Backend antigo/erro degrada para "não bloqueado" (campo ausente).
+  bool _bloqueado = false;
+  bool _mudandoBloqueio = false;
 
   @override
   void initState() {
@@ -66,6 +75,76 @@ class _PerfilPublicoDoadorScreenState extends State<PerfilPublicoDoadorScreen> {
         _carregando = false;
         _erro = true;
       });
+    }
+    _carregarBloqueio();
+  }
+
+  /// Best-effort: consulta se este doador está na lista de bloqueados da ONG.
+  /// Silencioso em erro (mantém o padrão "não bloqueado").
+  Future<void> _carregarBloqueio() async {
+    try {
+      final lista = await _bloqueioService.listar();
+      if (!mounted) return;
+      setState(() {
+        _bloqueado = lista.any((b) => b.doadorId == widget.doadorId);
+      });
+    } catch (_) {
+      // Sem quebra: o botão continua mostrando "Bloquear".
+    }
+  }
+
+  /// Bloqueia (com dialog de confirmação explicando o efeito) ou desbloqueia.
+  Future<void> _alternarBloqueio() async {
+    if (_mudandoBloqueio) return;
+
+    if (!_bloqueado) {
+      final confirmou = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Bloquear ${widget.doadorNome}?'),
+          content: const Text(
+              'O doador deixará de ver sua ONG e não poderá enviar '
+              'mensagens. Você pode desbloquear quando quiser, em '
+              'Configurações > Doadores bloqueados.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.block, size: 18),
+              label: const Text('Bloquear'),
+            ),
+          ],
+        ),
+      );
+      if (confirmou != true || !mounted) return;
+    }
+
+    setState(() => _mudandoBloqueio = true);
+    try {
+      if (_bloqueado) {
+        await _bloqueioService.desbloquear(widget.doadorId);
+      } else {
+        await _bloqueioService.bloquear(widget.doadorId);
+      }
+      if (!mounted) return;
+      setState(() => _bloqueado = !_bloqueado);
+      if (_bloqueado) {
+        AppSnackbar.aviso(context, '${widget.doadorNome} foi bloqueado.');
+      } else {
+        AppSnackbar.sucesso(context, '${widget.doadorNome} foi desbloqueado.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackbar.erro(context, ApiService.mensagemAmigavel(e));
+    } finally {
+      if (mounted) setState(() => _mudandoBloqueio = false);
     }
   }
 
@@ -119,10 +198,62 @@ class _PerfilPublicoDoadorScreenState extends State<PerfilPublicoDoadorScreen> {
                           ),
                         ],
                         const SizedBox(height: AppSpacing.lg),
+                        _botaoBloqueio(),
+                        const SizedBox(height: AppSpacing.lg),
                       ],
                     ),
                   ),
                 ),
+    );
+  }
+
+  /// Botão de bloqueio no rodapé do perfil (estilo WhatsApp): vermelho para
+  /// bloquear; vira "Desbloquear" quando o doador já está bloqueado.
+  Widget _botaoBloqueio() {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_bloqueado)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.block, size: 16, color: cs.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(
+                  'Você bloqueou este doador',
+                  style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        Tooltip(
+          message: _bloqueado
+              ? 'O doador voltará a ver sua ONG e a poder enviar mensagens'
+              : 'O doador deixará de ver sua ONG e não poderá enviar mensagens',
+          child: OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _bloqueado ? AppColors.primary : AppColors.error,
+              side: BorderSide(
+                  color:
+                      _bloqueado ? AppColors.primary : AppColors.error),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            onPressed: _mudandoBloqueio ? null : _alternarBloqueio,
+            icon: _mudandoBloqueio
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(_bloqueado ? Icons.lock_open : Icons.block, size: 18),
+            label:
+                Text(_bloqueado ? 'Desbloquear doador' : 'Bloquear doador'),
+          ),
+        ),
+      ],
     );
   }
 
