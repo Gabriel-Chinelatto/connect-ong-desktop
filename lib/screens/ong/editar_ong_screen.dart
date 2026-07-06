@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../services/ong_service.dart';
 import '../../theme/app_spacing.dart';
+import '../../utils/estado_cidade.dart';
 import '../../utils/imagens.dart';
+import '../../widgets/seletor_estado_cidade.dart';
 import '../../widgets/visualizador_imagem.dart';
 import '../../widgets/feedback/app_snackbar.dart';
 import '../../widgets/feedback/empty_state.dart';
@@ -37,6 +39,10 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
   final _endereco = TextEditingController();
 
   String _email = '';
+
+  /// UF escolhida no dropdown. O backend guarda "Cidade - UF" no campo único
+  /// `cidade`; na carga fazemos o parse de volta (separarCidadeUf).
+  String? _uf;
 
   // Capa (base64 + bytes p/ preview). Vazio = sem capa.
   String _capaBase64 = '';
@@ -82,7 +88,9 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
         _email = ong.email;
         _nome.text = ong.nome;
         _telefone.text = ong.telefone;
-        _cidade.text = ong.cidade;
+        final local = separarCidadeUf(ong.cidade);
+        _cidade.text = local.cidade;
+        _uf = local.uf;
         _descricao.text = ong.descricao;
         _endereco.text = ong.endereco ?? '';
         _capaBase64 = ong.capaBase64 ?? '';
@@ -183,7 +191,7 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
         nome: _nome.text.trim(),
         email: _email,
         telefone: _telefone.text.trim(),
-        cidade: _cidade.text.trim(),
+        cidade: formatarCidadeUf(_cidade.text, _uf),
         descricao: _descricao.text.trim(),
         // Endereco sempre vai (texto editavel direto); capa/fotos so se mexeu.
         endereco: _endereco.text.trim(),
@@ -228,7 +236,14 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
                         const SizedBox(height: AppSpacing.lg),
                         _campo(_nome, 'Nome da ONG'),
                         _campo(_telefone, 'Telefone'),
-                        _campo(_cidade, 'Cidade'),
+                        // Estado antes da cidade: a UF filtra o autocomplete
+                        // (mesmo padrão do app mobile).
+                        SeletorEstadoCidade(
+                          uf: _uf,
+                          cidadeController: _cidade,
+                          onUfChanged: (v) => setState(() => _uf = v),
+                          habilitado: !_salvando,
+                        ),
                         _campo(_descricao, 'Descrição (o que a ONG faz)',
                             linhas: 3),
                         _campo(_endereco,

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../services/ong_service.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/estado_cidade.dart';
+import '../../widgets/seletor_estado_cidade.dart';
 import '../legal/documentos_legais_screen.dart';
 
 /// Cadastro de uma nova ONG na plataforma.
@@ -30,6 +32,9 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
   final OngService _ongService = OngService();
   bool _enviando = false;
   bool _aceitouTermos = false;
+
+  /// UF escolhida no dropdown (o backend guarda "Cidade - UF" num campo só).
+  String? _uf;
 
   @override
   void dispose() {
@@ -61,7 +66,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
         nome: _nome.text.trim(),
         email: _email.text.trim(),
         telefone: _telefone.text.trim(),
-        cidade: _cidade.text.trim(),
+        cidade: formatarCidadeUf(_cidade.text, _uf),
         descricao: _descricao.text.trim(),
         cnpj: _cnpj.text.trim(),
         senha: _senha.text,
@@ -120,7 +125,14 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
                       validador: _validarEmail),
                   _campo(_telefone, 'Telefone',
                       teclado: TextInputType.phone),
-                  _campo(_cidade, 'Cidade'),
+                  // Estado antes da cidade: a UF filtra o autocomplete
+                  // (mesmo padrão do app mobile).
+                  SeletorEstadoCidade(
+                    uf: _uf,
+                    cidadeController: _cidade,
+                    onUfChanged: (v) => setState(() => _uf = v),
+                    habilitado: !_enviando,
+                  ),
                   _campo(_cnpj, 'CNPJ (opcional, para verificação)'),
                   _campo(_descricao, 'Descrição', linhas: 3),
                   _campo(_senha, 'Senha',
