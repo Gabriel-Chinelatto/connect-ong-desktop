@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 
 import '../../config/config_controller.dart';
@@ -6,14 +7,19 @@ import '../../services/api_service.dart';
 import '../../services/demo_service.dart';
 import '../../services/perfil_service.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_spacing.dart';
+import '../../widgets/feedback/app_snackbar.dart';
 import '../auth/login_screen.dart';
 import '../legal/documentos_legais_screen.dart';
+import 'doadores_bloqueados_screen.dart';
 
-/// Central de configuracoes da ONG.
+/// Central de configurações da ONG.
 ///
-/// Ajusta aparencia e acessibilidade (tema, fonte, alto contraste) e
-/// notificacoes, salvando via [ConfigController]; tambem aciona o "Modo Feira"
-/// (dados demonstrativos) e da acesso aos documentos legais.
+/// As alterações de aparência/notificações/privacidade ficam LOCAIS até o
+/// usuário tocar em "Salvar configurações" (barra fixa embaixo, visível só
+/// quando há mudança pendente), que aplica tudo de uma vez: PUT das
+/// preferências + tema. Sair com mudanças pendentes pede confirmação.
+/// Ações pontuais (Modo Feira, senha, excluir conta) continuam imediatas.
 class ConfiguracoesScreen extends StatefulWidget {
   const ConfiguracoesScreen({super.key});
 
@@ -22,7 +28,13 @@ class ConfiguracoesScreen extends StatefulWidget {
 }
 
 class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
+  /// Cópia local editável; só vira "oficial" no Salvar.
   late Preferencia _p;
+
+  /// Snapshot do último estado salvo (base da detecção de mudança pendente).
+  late Preferencia _original;
+
+  bool _salvando = false;
   bool _carregandoDemo = false;
   bool _excluindoConta = false;
 
@@ -30,155 +42,309 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
   void initState() {
     super.initState();
     _p = ConfigController.instance.prefs.copy();
+    _original = _p.copy();
   }
 
-  void _aplicar() {
-    setState(() {});
-    ConfigController.instance.atualizar(_p.copy());
+  bool get _temMudanca => !mapEquals(_p.toJson(), _original.toJson());
+
+  /// Toggles apenas alteram a cópia local (nada é aplicado/persistido aqui).
+  void _mudar(VoidCallback aplicar) => setState(aplicar);
+
+  /// Aplica tudo de uma vez: tema/fonte no app + PUT das preferências.
+  Future<void> _salvar() async {
+    if (_salvando) return;
+    setState(() => _salvando = true);
+    try {
+      await ConfigController.instance.salvar(_p.copy());
+      if (!mounted) return;
+      setState(() {
+        _original = _p.copy();
+        _salvando = false;
+      });
+      AppSnackbar.sucesso(context, 'Configurações salvas! 💚');
+    } catch (e) {
+      if (!mounted) return;
+      // Mantém as mudanças pendentes para o usuário tentar salvar de novo.
+      setState(() => _salvando = false);
+      AppSnackbar.erro(context, ApiService.mensagemAmigavel(e));
+    }
+  }
+
+  /// Volta a cópia local para o último estado salvo.
+  void _descartar() {
+    setState(() => _p = _original.copy());
+    AppSnackbar.info(context, 'Alterações descartadas.');
+  }
+
+  /// Ao tentar sair com mudanças pendentes: "Descartar alterações?".
+  Future<void> _confirmarSaida() async {
+    final descartar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Descartar alterações?'),
+        content: const Text(
+            'Você tem mudanças que ainda não foram salvas. Se sair agora, '
+            'elas serão perdidas.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Continuar editando'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Descartar'),
+          ),
+        ],
+      ),
+    );
+    if (descartar == true && mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Configurações')),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: ListView(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            children: [
-              _secao('Aparência', Icons.palette_outlined),
-              _escolha('Tema', const ['CLARO', 'ESCURO', 'AUTOMATICO'],
-                  const ['Claro', 'Escuro', 'Automático'], _p.tema, (v) {
-                _p.tema = v;
-                _aplicar();
-              }),
-              _escolha('Tamanho da fonte', const ['PEQUENA', 'MEDIA', 'GRANDE'],
-                  const ['Pequena', 'Média', 'Grande'], _p.tamanhoFonte, (v) {
-                _p.tamanhoFonte = v;
-                _aplicar();
-              }),
-              _switch('Alto contraste', 'Mais contraste para leitura',
-                  _p.altoContraste, (v) {
-                _p.altoContraste = v;
-                _aplicar();
-              }),
-              _switch('Fonte para dislexia', 'Usa uma fonte mais legível',
-                  _p.fonteDislexia, (v) {
-                _p.fonteDislexia = v;
-                _aplicar();
-              }),
-              _switch('Navegação simplificada', 'Modo mais simples de usar',
-                  _p.navegacaoSimplificada, (v) {
-                _p.navegacaoSimplificada = v;
-                _aplicar();
-              }),
-              _secao('Notificações', Icons.notifications_outlined),
-              _switch('Novas mensagens', null, _p.notifMensagens, (v) {
-                _p.notifMensagens = v;
-                _aplicar();
-              }),
-              _switch('Match de doações', null, _p.notifMatch, (v) {
-                _p.notifMatch = v;
-                _aplicar();
-              }),
-              _switch('Atualizações de campanhas', null, _p.notifCampanhas, (v) {
-                _p.notifCampanhas = v;
-                _aplicar();
-              }),
-              _switch('Novas necessidades', null, _p.notifNecessidades, (v) {
-                _p.notifNecessidades = v;
-                _aplicar();
-              }),
-              _switch('Notícias da plataforma', null, _p.notifNoticias, (v) {
-                _p.notifNoticias = v;
-                _aplicar();
-              }),
-              _secao('Privacidade', Icons.lock_outline),
-              _switch('Exibir telefone', null, _p.mostrarTelefone, (v) {
-                _p.mostrarTelefone = v;
-                _aplicar();
-              }),
-              _switch('Exibir e-mail', null, _p.mostrarEmail, (v) {
-                _p.mostrarEmail = v;
-                _aplicar();
-              }),
-              _switch('Perfil público', null, _p.perfilPublico, (v) {
-                _p.perfilPublico = v;
-                _aplicar();
-              }),
-              _switch('Receber sugestões', null, _p.receberSugestoes, (v) {
-                _p.receberSugestoes = v;
-                _aplicar();
-              }),
-              _secao('Segurança', Icons.shield_outlined),
-              ListTile(
-                leading: const Icon(Icons.password),
-                title: const Text('Alterar senha'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _abrirAlterarSenha,
-              ),
-              _secao('Termos e Privacidade', Icons.gavel_outlined),
-              ListTile(
-                leading: const Icon(Icons.privacy_tip_outlined),
-                title: const Text('Politica de Privacidade'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _abrirDocumento(DocumentoLegal.privacidade),
-              ),
-              ListTile(
-                leading: const Icon(Icons.description_outlined),
-                title: const Text('Termos de Uso'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _abrirDocumento(DocumentoLegal.termos),
-              ),
-              _secao('Modo Feira', Icons.celebration_outlined),
-              SwitchListTile(
-                title: const Text('Modo Feira'),
-                subtitle: const Text(
-                    'Mostra as credenciais de demonstração na tela de login'),
-                value: ConfigController.instance.modoFeira,
-                activeThumbColor: AppColors.primary,
-                onChanged: (v) {
-                  ConfigController.instance.setModoFeira(v);
-                  setState(() {});
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.auto_awesome),
-                title: const Text('Carregar dados demonstrativos'),
-                subtitle: const Text(
-                    'Popula o sistema com ONGs, doadores e doacoes para a apresentacao'),
-                trailing: _carregandoDemo
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.chevron_right),
-                onTap: _carregandoDemo ? null : _carregarDadosDemo,
-              ),
-              _secaoPerigo('Zona de perigo'),
-              ListTile(
-                leading: const Icon(Icons.delete_forever, color: AppColors.error),
-                title: const Text(
-                  'Excluir minha conta',
-                  style: TextStyle(
-                      color: AppColors.error, fontWeight: FontWeight.w600),
-                ),
-                subtitle: const Text(
-                    'Desativa a conta da ONG e a remove da plataforma'),
-                trailing: _excluindoConta
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.chevron_right, color: AppColors.error),
-                onTap: _excluindoConta ? null : _confirmarExcluirConta,
-              ),
-              const SizedBox(height: 24),
-            ],
+    return PopScope(
+      canPop: !_temMudanca,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmarSaida();
+      },
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Configurações')),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md, vertical: AppSpacing.md),
+              children: [
+                _cartaoSecao('Aparência e acessibilidade',
+                    Icons.palette_outlined, [
+                  _escolha('Tema', const ['CLARO', 'ESCURO', 'AUTOMATICO'],
+                      const ['Claro', 'Escuro', 'Automático'], _p.tema,
+                      (v) => _mudar(() => _p.tema = v)),
+                  _escolha(
+                      'Tamanho da fonte',
+                      const ['PEQUENA', 'MEDIA', 'GRANDE'],
+                      const ['Pequena', 'Média', 'Grande'],
+                      _p.tamanhoFonte,
+                      (v) => _mudar(() => _p.tamanhoFonte = v)),
+                  _switch('Alto contraste', 'Mais contraste para leitura',
+                      _p.altoContraste,
+                      (v) => _mudar(() => _p.altoContraste = v)),
+                  _switch('Fonte para dislexia', 'Usa uma fonte mais legível',
+                      _p.fonteDislexia,
+                      (v) => _mudar(() => _p.fonteDislexia = v)),
+                  _switch(
+                      'Navegação simplificada',
+                      'Modo mais simples de usar',
+                      _p.navegacaoSimplificada,
+                      (v) => _mudar(() => _p.navegacaoSimplificada = v)),
+                ]),
+                _cartaoSecao('Notificações', Icons.notifications_outlined, [
+                  _switch('Novas mensagens', null, _p.notifMensagens,
+                      (v) => _mudar(() => _p.notifMensagens = v)),
+                  _switch('Match de doações', null, _p.notifMatch,
+                      (v) => _mudar(() => _p.notifMatch = v)),
+                  _switch('Atualizações de campanhas', null, _p.notifCampanhas,
+                      (v) => _mudar(() => _p.notifCampanhas = v)),
+                  _switch('Novas necessidades', null, _p.notifNecessidades,
+                      (v) => _mudar(() => _p.notifNecessidades = v)),
+                  _switch('Notícias da plataforma', null, _p.notifNoticias,
+                      (v) => _mudar(() => _p.notifNoticias = v)),
+                ]),
+                _cartaoSecao('Privacidade', Icons.lock_outline, [
+                  _switch('Exibir telefone', null, _p.mostrarTelefone,
+                      (v) => _mudar(() => _p.mostrarTelefone = v)),
+                  _switch('Exibir e-mail', null, _p.mostrarEmail,
+                      (v) => _mudar(() => _p.mostrarEmail = v)),
+                  _switch('Perfil público', null, _p.perfilPublico,
+                      (v) => _mudar(() => _p.perfilPublico = v)),
+                  _switch('Receber sugestões', null, _p.receberSugestoes,
+                      (v) => _mudar(() => _p.receberSugestoes = v)),
+                  ListTile(
+                    leading: const Icon(Icons.block),
+                    title: const Text('Doadores bloqueados'),
+                    subtitle: const Text(
+                        'Gerencie quem não pode ver sua ONG nem enviar mensagens'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const DoadoresBloqueadosScreen(),
+                      ),
+                    ),
+                  ),
+                ]),
+                _cartaoSecao('Segurança', Icons.shield_outlined, [
+                  ListTile(
+                    leading: const Icon(Icons.password),
+                    title: const Text('Alterar senha'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _abrirAlterarSenha,
+                  ),
+                ]),
+                _cartaoSecao('Termos e Privacidade', Icons.gavel_outlined, [
+                  ListTile(
+                    leading: const Icon(Icons.privacy_tip_outlined),
+                    title: const Text('Política de Privacidade'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _abrirDocumento(DocumentoLegal.privacidade),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: const Text('Termos de Uso'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _abrirDocumento(DocumentoLegal.termos),
+                  ),
+                ]),
+                _cartaoSecao('Modo Feira', Icons.celebration_outlined, [
+                  SwitchListTile(
+                    title: const Text('Modo Feira'),
+                    subtitle: const Text(
+                        'Mostra as credenciais de demonstração na tela de login'),
+                    value: ConfigController.instance.modoFeira,
+                    activeThumbColor: AppColors.primary,
+                    onChanged: (v) {
+                      // Flag local do dispositivo: aplica na hora (não faz
+                      // parte das preferências salvas no backend).
+                      ConfigController.instance.setModoFeira(v);
+                      setState(() {});
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.auto_awesome),
+                    title: const Text('Carregar dados demonstrativos'),
+                    subtitle: const Text(
+                        'Popula o sistema com ONGs, doadores e doações para a apresentação'),
+                    trailing: _carregandoDemo
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.chevron_right),
+                    onTap: _carregandoDemo ? null : _carregarDadosDemo,
+                  ),
+                ]),
+                _cartaoSecao('Zona de perigo', Icons.warning_amber_outlined, [
+                  ListTile(
+                    leading:
+                        const Icon(Icons.delete_forever, color: AppColors.error),
+                    title: const Text(
+                      'Excluir minha conta',
+                      style: TextStyle(
+                          color: AppColors.error, fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: const Text(
+                        'Desativa a conta da ONG e a remove da plataforma'),
+                    trailing: _excluindoConta
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.chevron_right,
+                            color: AppColors.error),
+                    onTap: _excluindoConta ? null : _confirmarExcluirConta,
+                  ),
+                ], corTitulo: AppColors.error),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+            ),
           ),
+        ),
+        // Barra fixa de salvar: só aparece quando há mudança pendente.
+        bottomNavigationBar: !_temMudanca
+            ? null
+            : Material(
+                elevation: 8,
+                color: Theme.of(context).colorScheme.surface,
+                child: SafeArea(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 720),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.sm),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline,
+                                size: 18,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Você tem alterações não salvas',
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _salvando ? null : _descartar,
+                              child: const Text('Descartar'),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            FilledButton.icon(
+                              onPressed: _salvando ? null : _salvar,
+                              icon: _salvando
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.save_outlined, size: 18),
+                              label: const Text('Salvar configurações'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  /// Card de seção: cabeçalho com ícone + título e os itens agrupados.
+  Widget _cartaoSecao(String titulo, IconData icone, List<Widget> filhos,
+      {Color corTitulo = AppColors.primary}) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.xs),
+              child: Row(
+                children: [
+                  Icon(icone, size: 20, color: corTitulo),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(titulo,
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: corTitulo)),
+                ],
+              ),
+            ),
+            ...filhos,
+          ],
         ),
       ),
     );
@@ -233,51 +399,10 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ApiService.mensagemAmigavel(e)),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      AppSnackbar.erro(context, ApiService.mensagemAmigavel(e));
     } finally {
       if (mounted) setState(() => _carregandoDemo = false);
     }
-  }
-
-  Widget _secao(String titulo, IconData icone) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-      child: Row(
-        children: [
-          Icon(icone, size: 20, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Text(titulo,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary)),
-        ],
-      ),
-    );
-  }
-
-  /// Cabecalho de secao em vermelho, para acoes destrutivas (zona de perigo).
-  Widget _secaoPerigo(String titulo) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_outlined,
-              size: 20, color: AppColors.error),
-          const SizedBox(width: 8),
-          Text(titulo,
-              style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.error)),
-        ],
-      ),
-    );
   }
 
   /// Fluxo de exclusao da propria conta: confirma, chama o backend e, em caso
@@ -336,12 +461,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ApiService.mensagemAmigavel(e)),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      AppSnackbar.erro(context, ApiService.mensagemAmigavel(e));
       setState(() => _excluindoConta = false);
     }
   }
@@ -434,12 +554,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                 if (!dialogContext.mounted) return;
                 Navigator.pop(dialogContext);
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Senha alterada com sucesso! 💚'),
-                    backgroundColor: AppColors.primary,
-                  ),
-                );
+                AppSnackbar.sucesso(context, 'Senha alterada com sucesso! 💚');
               } catch (e) {
                 if (!dialogContext.mounted) return;
                 ScaffoldMessenger.of(dialogContext).showSnackBar(

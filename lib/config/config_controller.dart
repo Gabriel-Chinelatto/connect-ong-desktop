@@ -86,6 +86,8 @@ class ConfigController extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Aplica as preferências no app (tema/fonte/etc.) e persiste no backend,
+  /// silenciando erros de rede (uso legado, aplicação imediata).
   Future<void> atualizar(Preferencia novo) async {
     _prefs = novo;
     notifyListeners();
@@ -93,6 +95,17 @@ class ConfigController extends ChangeNotifier {
       try {
         await _service.salvar(_usuarioId!, novo);
       } catch (_) {}
+    }
+  }
+
+  /// Versão do [atualizar] para o "Salvar configurações" em lote: aplica o
+  /// tema imediatamente e PROPAGA o erro do PUT (a tela decide o feedback e
+  /// mantém o estado "pendente" para o usuário tentar de novo).
+  Future<void> salvar(Preferencia novo) async {
+    _prefs = novo;
+    notifyListeners();
+    if (_usuarioId != null) {
+      await _service.salvar(_usuarioId!, novo);
     }
   }
 
