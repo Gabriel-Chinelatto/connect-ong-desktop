@@ -31,7 +31,6 @@ import 'perfil_publico_doador_screen.dart';
 import 'mural_impacto_screen.dart';
 import 'ranking_transparencia_screen.dart';
 import 'conquistas_screen.dart';
-import 'perfil_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../utils/categorias.dart';
@@ -617,14 +616,6 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                 ),
               ),
               icon: const Icon(Icons.storefront_outlined),
-            ),
-            IconButton(
-              tooltip: 'Meu Perfil',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PerfilScreen()),
-              ),
-              icon: const Icon(Icons.person_outline),
             ),
             IconButton(
               tooltip: 'Configurações',
