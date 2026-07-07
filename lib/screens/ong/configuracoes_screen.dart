@@ -282,7 +282,13 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                 elevation: 8,
                 color: Theme.of(context).colorScheme.surface,
                 child: SafeArea(
+                  // heightFactor: 1.0 faz o Center abraçar a ALTURA do conteúdo
+                  // em vez de expandir para preencher todo o espaço vertical
+                  // disponível. Sem isso, ao virar bottomNavigationBar, este
+                  // Center inflava até a altura da tela e o corpo (a lista de
+                  // seções) ficava com altura 0 — a tela "quase em branco".
                   child: Center(
+                    heightFactor: 1.0,
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxWidth: 720),
                       child: Padding(

@@ -11,6 +11,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/feedback/app_snackbar.dart';
 import '../../widgets/feedback/empty_state.dart';
+import 'perfil_publico_ong_screen.dart';
 
 /// Perfil publico de um doador, visto pela ONG (contrato
 /// GET /usuarios/{id}/perfil-publico). Header com foto/inicial, nome, cidade,
@@ -43,6 +44,10 @@ class _PerfilPublicoDoadorScreenState extends State<PerfilPublicoDoadorScreen> {
   /// Backend antigo/erro degrada para "não bloqueado" (campo ausente).
   bool _bloqueado = false;
   bool _mudandoBloqueio = false;
+
+  /// Guarda anti-duplo-clique ao abrir o perfil de uma ONG (contraparte das
+  /// prestações). Evita empilhar a mesma tela duas vezes.
+  bool _navegando = false;
 
   @override
   void initState() {
@@ -175,6 +180,22 @@ class _PerfilPublicoDoadorScreenState extends State<PerfilPublicoDoadorScreen> {
                         _cabecalho(_perfil!),
                         const SizedBox(height: AppSpacing.md),
                         _stats(_perfil!),
+                        if (_perfil!.email != null ||
+                            _perfil!.telefone != null) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          _secao(
+                            'Contato',
+                            Icons.contact_mail_outlined,
+                            [
+                              if (_perfil!.email != null)
+                                _linhaContato(
+                                    Icons.email_outlined, _perfil!.email!),
+                              if (_perfil!.telefone != null)
+                                _linhaContato(
+                                    Icons.phone_outlined, _perfil!.telefone!),
+                            ],
+                          ),
+                        ],
                         if (_perfil!.avaliacoes.isNotEmpty) ...[
                           const SizedBox(height: AppSpacing.md),
                           _secao(
@@ -191,10 +212,7 @@ class _PerfilPublicoDoadorScreenState extends State<PerfilPublicoDoadorScreen> {
                           _secao(
                             'Prestações de contas recebidas',
                             Icons.receipt_long_outlined,
-                            [
-                              for (final p in _perfil!.prestacoesRecebidas)
-                                _prestacao(p),
-                            ],
+                            _prestacoesAgrupadas(_perfil!.prestacoesRecebidas),
                           ),
                         ],
                         const SizedBox(height: AppSpacing.lg),
@@ -423,29 +441,144 @@ class _PerfilPublicoDoadorScreenState extends State<PerfilPublicoDoadorScreen> {
     );
   }
 
-  Widget _prestacao(PrestacaoRecebida p) {
+  /// Linha de contato (e-mail/telefone) selecionável para copiar.
+  Widget _linhaContato(IconData icon, String texto) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: AppColors.primary),
+            const SizedBox(width: 10),
+            Expanded(child: SelectableText(texto)),
+          ],
+        ),
+      );
+
+  /// Agrupa as prestações recebidas pela ONG emissora (contraparte). Cada ONG
+  /// vira um cabeçalho clicável (→ perfil da ONG) mostrado UMA vez, com suas
+  /// prestações listadas abaixo. Prestações sem ONG identificada (ongId/ongNome
+  /// nulos) degradam: aparecem sem cabeçalho/link.
+  List<Widget> _prestacoesAgrupadas(List<PrestacaoRecebida> lista) {
+    final grupos = <String, List<PrestacaoRecebida>>{};
+    final ordem = <String>[];
+    for (final p in lista) {
+      final chave = p.ongId != null
+          ? 'id:${p.ongId}'
+          : (p.ongNome != null && p.ongNome!.isNotEmpty
+              ? 'nome:${p.ongNome}'
+              : '_sem_');
+      if (!grupos.containsKey(chave)) ordem.add(chave);
+      grupos.putIfAbsent(chave, () => []).add(p);
+    }
+
+    final widgets = <Widget>[];
+    for (var g = 0; g < ordem.length; g++) {
+      final chave = ordem[g];
+      final itens = grupos[chave]!;
+      final ref = itens.first;
+      if (g > 0) widgets.add(const Divider(height: 20));
+      if (chave != '_sem_') widgets.add(_cabecalhoOng(ref));
+      for (final p in itens) {
+        widgets.add(_itemPrestacao(p));
+      }
+    }
+    return widgets;
+  }
+
+  /// Cabeçalho da ONG emissora: clicável quando há ongId; caso contrário só
+  /// exibe o nome (degrada sem link).
+  Widget _cabecalhoOng(PrestacaoRecebida ref) {
+    final nome = (ref.ongNome != null && ref.ongNome!.isNotEmpty)
+        ? ref.ongNome!
+        : 'ONG';
+    final cs = Theme.of(context).colorScheme;
+    if (ref.ongId == null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          children: [
+            Icon(Icons.corporate_fare_outlined,
+                size: 16, color: cs.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(nome,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurfaceVariant)),
+            ),
+          ],
+        ),
+      );
+    }
+    return Tooltip(
+      message: 'Ver perfil de $nome',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => _abrirOng(ref.ongId!, nome),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              const Icon(Icons.corporate_fare_outlined,
+                  size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(nome,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary)),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right,
+                  size: 16, color: AppColors.primary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _itemPrestacao(PrestacaoRecebida p) {
+    final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(left: 22, bottom: 12, top: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(p.titulo, style: const TextStyle(fontWeight: FontWeight.w600)),
           if (p.descricao.isNotEmpty) Text(p.descricao),
-          const SizedBox(height: 2),
-          Text(
-            [
-              if (p.ongNome != null && p.ongNome!.isNotEmpty) p.ongNome,
-              if (p.necessidadeTitulo != null &&
-                  p.necessidadeTitulo!.isNotEmpty)
-                p.necessidadeTitulo,
-            ].join(' • '),
-            style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
+          if ((p.necessidadeTitulo != null &&
+                  p.necessidadeTitulo!.isNotEmpty) ||
+              p.criadoEm != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              [
+                if (p.necessidadeTitulo != null &&
+                    p.necessidadeTitulo!.isNotEmpty)
+                  p.necessidadeTitulo,
+                if (p.criadoEm != null) _mesAno(p.criadoEm!),
+              ].where((e) => e != null && e.isNotEmpty).join(' • '),
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  /// Abre o perfil público da ONG contraparte (com guarda anti-duplo-clique).
+  Future<void> _abrirOng(int ongId, String ongNome) async {
+    if (_navegando) return;
+    _navegando = true;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            PerfilPublicoOngScreen(ongId: ongId, ongNome: ongNome),
+      ),
+    );
+    if (mounted) _navegando = false;
   }
 
   /// Formata uma data ISO como "MM/aaaa" (usado em "membro desde").

@@ -9,6 +9,7 @@ import '../../theme/app_colors.dart';
 import '../../utils/app_links.dart';
 import '../../widgets/visualizador_imagem.dart';
 import '../../widgets/feedback/empty_state.dart';
+import 'perfil_publico_doador_screen.dart';
 
 /// Pre-visualizacao de como a ONG aparece publicamente para os doadores
 /// (mesmo endpoint usado pelo app do doador).
@@ -33,6 +34,10 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
   List<Uint8List> _fotosLocalBytes = [];
   bool _carregando = true;
   bool _erro = false;
+
+  /// Guarda anti-duplo-clique ao abrir o perfil de um doador (contraparte das
+  /// prestações).
+  bool _navegando = false;
 
   @override
   void initState() {
@@ -127,22 +132,8 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
                           ]),
                         if (_perfil!.prestacoes.isNotEmpty)
                           _secao('Prestacoes de contas',
-                              Icons.receipt_long_outlined, [
-                            for (final p in _perfil!.prestacoes)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(p.titulo,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w600)),
-                                    if (p.descricao.isNotEmpty)
-                                      Text(p.descricao),
-                                  ],
-                                ),
-                              ),
-                          ]),
+                              Icons.receipt_long_outlined,
+                              _prestacoesAgrupadas(_perfil!.prestacoes)),
                         if (_perfil!.avaliacoes.isNotEmpty)
                           _secao('Avaliacoes', Icons.star_outline, [
                             for (final a in _perfil!.avaliacoes) _avaliacao(a),
@@ -547,5 +538,117 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
         ],
       ),
     );
+  }
+
+  /// Agrupa as prestações por doador (contraparte). Cada doador vira um
+  /// cabeçalho "para <doador>" clicável (→ perfil do doador), mostrado UMA vez,
+  /// com suas prestações abaixo. Prestações sem doador identificado
+  /// (doadorId/doadorNome nulos) degradam: aparecem sem cabeçalho/link.
+  List<Widget> _prestacoesAgrupadas(List<PrestacaoResumo> lista) {
+    final grupos = <String, List<PrestacaoResumo>>{};
+    final ordem = <String>[];
+    for (final p in lista) {
+      final chave = p.doadorId != null
+          ? 'id:${p.doadorId}'
+          : (p.doadorNome != null && p.doadorNome!.isNotEmpty
+              ? 'nome:${p.doadorNome}'
+              : '_sem_');
+      if (!grupos.containsKey(chave)) ordem.add(chave);
+      grupos.putIfAbsent(chave, () => []).add(p);
+    }
+
+    final widgets = <Widget>[];
+    for (var g = 0; g < ordem.length; g++) {
+      final chave = ordem[g];
+      final itens = grupos[chave]!;
+      final ref = itens.first;
+      if (g > 0) widgets.add(const Divider(height: 20));
+      if (chave != '_sem_') widgets.add(_cabecalhoDoador(ref));
+      for (final p in itens) {
+        widgets.add(_itemPrestacao(p, comRecuo: chave != '_sem_'));
+      }
+    }
+    return widgets;
+  }
+
+  /// Cabeçalho "para <doador>": clicável quando há doadorId; senão só texto.
+  Widget _cabecalhoDoador(PrestacaoResumo ref) {
+    final nome = (ref.doadorNome != null && ref.doadorNome!.isNotEmpty)
+        ? ref.doadorNome!
+        : 'Doador';
+    final cs = Theme.of(context).colorScheme;
+    if (ref.doadorId == null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          children: [
+            Icon(Icons.person_outline, size: 16, color: cs.onSurfaceVariant),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text('para $nome',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurfaceVariant)),
+            ),
+          ],
+        ),
+      );
+    }
+    return Tooltip(
+      message: 'Ver perfil de $nome',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => _abrirDoador(ref.doadorId!, nome),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              const Icon(Icons.person_outline,
+                  size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text('para $nome',
+                    style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary)),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right,
+                  size: 16, color: AppColors.primary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _itemPrestacao(PrestacaoResumo p, {required bool comRecuo}) {
+    return Padding(
+      padding: EdgeInsets.only(left: comRecuo ? 22 : 0, bottom: 10, top: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(p.titulo,
+              style: const TextStyle(fontWeight: FontWeight.w600)),
+          if (p.descricao.isNotEmpty) Text(p.descricao),
+        ],
+      ),
+    );
+  }
+
+  /// Abre o perfil público do doador contraparte (guarda anti-duplo-clique).
+  Future<void> _abrirDoador(int doadorId, String doadorNome) async {
+    if (_navegando) return;
+    _navegando = true;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PerfilPublicoDoadorScreen(
+            doadorId: doadorId, doadorNome: doadorNome),
+      ),
+    );
+    if (mounted) _navegando = false;
   }
 }

@@ -179,11 +179,19 @@ class PrestacaoResumo {
   final List<String> fotos;
   final double? valorUtilizado;
 
+  /// Contraparte: o doador para quem esta prestação foi feita. [doadorId]
+  /// permite abrir o perfil público do doador; quando null, degrada (sem
+  /// link/agrupamento por doador).
+  final int? doadorId;
+  final String? doadorNome;
+
   const PrestacaoResumo({
     required this.titulo,
     required this.descricao,
     this.fotos = const [],
     this.valorUtilizado,
+    this.doadorId,
+    this.doadorNome,
   });
 
   factory PrestacaoResumo.fromJson(Map<String, dynamic> j) => PrestacaoResumo(
@@ -191,5 +199,7 @@ class PrestacaoResumo {
         descricao: j['descricao'] ?? '',
         fotos: ((j['fotos'] as List?) ?? []).whereType<String>().toList(),
         valorUtilizado: (j['valorUtilizado'] as num?)?.toDouble(),
+        doadorId: (j['doadorId'] as num?)?.toInt(),
+        doadorNome: j['doadorNome'] as String?,
       );
 }

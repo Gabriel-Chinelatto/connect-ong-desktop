@@ -2,7 +2,8 @@
 ///
 /// Usado pela ONG para conhecer quem esta doando: identidade basica, nota
 /// media dada por outras ONGs, stats e as prestacoes que ele ja recebeu.
-/// Nunca traz email/telefone (privacidade).
+/// O email/telefone só vêm preenchidos quando o doador ligou "exibir e-mail/
+/// telefone" nas configurações; caso contrário chegam null (privacidade).
 class PerfilPublicoDoador {
   final int id;
   final String nome;
@@ -17,6 +18,12 @@ class PerfilPublicoDoador {
   final List<AvaliacaoDoador> avaliacoes;
   final List<PrestacaoRecebida> prestacoesRecebidas;
 
+  /// Contato do doador. Vêm null quando o doador NÃO autorizou exibir
+  /// (toggles "exibir e-mail/telefone" desligados) — a UI só mostra a seção
+  /// de contato quando ao menos um destes vier não-nulo.
+  final String? email;
+  final String? telefone;
+
   const PerfilPublicoDoador({
     required this.id,
     required this.nome,
@@ -30,10 +37,17 @@ class PerfilPublicoDoador {
     this.totalDoacoesPix = 0,
     this.avaliacoes = const [],
     this.prestacoesRecebidas = const [],
+    this.email,
+    this.telefone,
   });
 
   factory PerfilPublicoDoador.fromJson(Map<String, dynamic> j) {
     final stats = (j['stats'] as Map<String, dynamic>?) ?? const {};
+    String? textoOuNull(dynamic v) {
+      if (v is String && v.trim().isNotEmpty) return v.trim();
+      return null;
+    }
+
     return PerfilPublicoDoador(
       id: (j['id'] ?? 0) as int,
       nome: j['nome'] ?? '',
@@ -41,6 +55,8 @@ class PerfilPublicoDoador {
       estado: j['estado'],
       fotoBase64: j['fotoBase64'],
       membroDesde: j['membroDesde'],
+      email: textoOuNull(j['email']),
+      telefone: textoOuNull(j['telefone']),
       notaMediaDoador: (j['notaMediaDoador'] as num?)?.toDouble(),
       totalAvaliacoesDoador: (j['totalAvaliacoesDoador'] ?? 0) as int,
       matchesConcluidos: ((stats['matchesConcluidos'] ?? 0) as num).toInt(),
@@ -81,6 +97,10 @@ class AvaliacaoDoador {
 class PrestacaoRecebida {
   final String titulo;
   final String descricao;
+
+  /// Contraparte: a ONG que emitiu esta prestação. [ongId] permite abrir o
+  /// perfil público da ONG; quando null, a UI degrada (sem link/agrupamento).
+  final int? ongId;
   final String? ongNome;
   final String? necessidadeTitulo;
   final String? criadoEm; // ISO
@@ -88,6 +108,7 @@ class PrestacaoRecebida {
   const PrestacaoRecebida({
     required this.titulo,
     required this.descricao,
+    this.ongId,
     this.ongNome,
     this.necessidadeTitulo,
     this.criadoEm,
@@ -97,6 +118,7 @@ class PrestacaoRecebida {
       PrestacaoRecebida(
         titulo: j['titulo'] ?? '',
         descricao: j['descricao'] ?? '',
+        ongId: (j['ongId'] as num?)?.toInt(),
         ongNome: j['ongNome'],
         necessidadeTitulo: j['necessidadeTitulo'],
         criadoEm: j['criadoEm'],
