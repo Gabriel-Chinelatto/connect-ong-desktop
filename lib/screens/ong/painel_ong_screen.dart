@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
@@ -262,11 +264,60 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   // Selo "verificada" do cabecalho (best-effort, via perfil publico).
   bool _verificada = false;
 
+  // ---- Interesses em tempo real ----
+  // Polling leve (a cada 4s) so da lista de interesses, para um novo interesse
+  // do doador aparecer sem o usuario sair e reabrir o painel. Detecta ids ainda
+  // nao vistos e avisa com um toast "Novo interesse recebido!".
+  Timer? _timerInteresses;
+  Set<int> _idsInteressesVistos = {};
+  bool _interessesInicializados = false;
+  bool _pollEmCurso = false;
+
   @override
   void initState() {
     super.initState();
     _carregarTudo();
     _carregarDoacoes();
+    _timerInteresses = Timer.periodic(
+      const Duration(seconds: 4),
+      (_) => _pollInteresses(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _timerInteresses?.cancel();
+    super.dispose();
+  }
+
+  /// Poll leve da lista de interesses (sem recarregar o painel inteiro).
+  /// Ao detectar interesses novos (id nunca visto), avisa e atualiza a lista e
+  /// o contador do cabecalho. Best-effort: erros de rede sao ignorados.
+  Future<void> _pollInteresses() async {
+    if (_pollEmCurso || !mounted) return;
+    _pollEmCurso = true;
+    try {
+      final lista = await _interesseService.listarPorOng(widget.ong.id);
+      if (!mounted) return;
+      final novos = _interessesInicializados
+          ? lista.where((i) => !_idsInteressesVistos.contains(i.id)).length
+          : 0;
+      setState(() => _interesses = lista);
+      _idsInteressesVistos = lista.map((i) => i.id).toSet();
+      _interessesInicializados = true;
+      if (novos > 0) {
+        AppSnackbar.info(
+          context,
+          novos == 1
+              ? 'Novo interesse recebido! 💚'
+              : '$novos novos interesses recebidos! 💚',
+        );
+      }
+    } catch (_) {
+      // Silencioso: o proximo tick tenta de novo.
+    } finally {
+      _pollEmCurso = false;
+    }
   }
 
   /// Carrega as doacoes PIX recebidas pela ONG (aba "Doações").
@@ -353,6 +404,10 @@ class _PainelConteudoState extends State<_PainelConteudo> {
         _atividades = ativs;
         _carregando = false;
       });
+      // Base do polling em tempo real: a partir daqui, ids ainda nao vistos
+      // sao considerados "novos interesses".
+      _idsInteressesVistos = ints.map((i) => i.id).toSet();
+      _interessesInicializados = true;
     } catch (e) {
       if (!mounted) return;
       setState(() => _carregando = false);
@@ -419,6 +474,60 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     if (publicou == true && mounted) {
       AppSnackbar.sucesso(context, 'Necessidade publicada! 🎉');
       _carregarTudo();
+    }
+  }
+
+  /// Abre o formulario de necessidade pre-preenchido para EDICAO (PUT).
+  Future<void> _abrirFormEditarNecessidade(Necessidade n) async {
+    final editou = await showDialog<bool>(
+      context: context,
+      builder: (_) => _FormNecessidade(ongId: widget.ong.id, necessidade: n),
+    );
+    if (editou == true && mounted) {
+      AppSnackbar.sucesso(context, 'Necessidade atualizada! ✏️');
+      _carregarTudo();
+    }
+  }
+
+  /// Exclui uma necessidade (com confirmacao). Degrada com backend antigo:
+  /// se a rota nao existir, mostra erro amigavel sem quebrar o painel.
+  Future<void> _excluirNecessidade(Necessidade n) async {
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir necessidade?'),
+        content: Text(
+            'Tem certeza que deseja excluir "${n.titulo}"? '
+            'Esta ação não pode ser desfeita.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+    if (confirmou != true) return;
+    if (_acaoEmCurso) return;
+    _acaoEmCurso = true;
+    try {
+      await _necessidadeService.excluir(n.id);
+      if (!mounted) return;
+      AppSnackbar.aviso(context, 'Necessidade excluída.');
+      _carregarTudo();
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackbar.erro(context, ApiService.mensagemAmigavel(e));
+    } finally {
+      _acaoEmCurso = false;
     }
   }
 
@@ -900,16 +1009,52 @@ class _PainelConteudoState extends State<_PainelConteudo> {
             title: Text(n.titulo,
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text('${n.categoria} • ${n.descricao}'),
-            trailing: n.urgente
-                ? Chip(
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (n.urgente)
+                  Chip(
                     label: const Text('Urgente'),
                     backgroundColor: AppColors.error.withValues(alpha: 0.12),
                     labelStyle: const TextStyle(color: AppColors.error),
                     side: BorderSide.none,
                   )
-                : Text(n.status,
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                else
+                  Text(n.status,
+                      style: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant)),
+                PopupMenuButton<String>(
+                  tooltip: 'Opções da necessidade',
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (v) {
+                    if (v == 'editar') _abrirFormEditarNecessidade(n);
+                    if (v == 'excluir') _excluirNecessidade(n);
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'editar',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.edit_outlined),
+                        title: Text('Editar'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'excluir',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading:
+                            Icon(Icons.delete_outline, color: AppColors.error),
+                        title: Text('Excluir',
+                            style: TextStyle(color: AppColors.error)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -940,8 +1085,133 @@ class _PainelConteudoState extends State<_PainelConteudo> {
             child: Text('Nenhum interesse recebido ainda.'),
           )
         else
-          for (final it in _interesses) _cardInteresse(it),
+          ..._interessesAgrupados(),
       ],
+    );
+  }
+
+  /// Monta a lista de interesses AGRUPADA por doador.
+  ///
+  /// Um doador com mais de um interesse/doação vira um card expansível (nome +
+  /// avatar + contador + um único "Ver perfil do doador"); as doações
+  /// CONCLUÍDAS vão para o fim, dentro do grupo. Com apenas um interesse, o
+  /// card é direto (como antes). Interesses sem doadorId identificável não são
+  /// agrupados (aparecem como cards diretos).
+  List<Widget> _interessesAgrupados() {
+    final Map<int, List<Interesse>> porDoador = {};
+    final List<int> ordem = [];
+    final List<Interesse> semDoador = [];
+    for (final it in _interesses) {
+      final id = it.doadorId;
+      if (id == null) {
+        semDoador.add(it);
+        continue;
+      }
+      (porDoador[id] ??= (() {
+        ordem.add(id);
+        return <Interesse>[];
+      })())
+          .add(it);
+    }
+
+    final widgets = <Widget>[];
+    for (final id in ordem) {
+      final lista = porDoador[id]!;
+      if (lista.length == 1) {
+        widgets.add(_cardInteresse(lista.first));
+      } else {
+        widgets.add(_grupoDoador(lista));
+      }
+    }
+    for (final it in semDoador) {
+      widgets.add(_cardInteresse(it));
+    }
+    return widgets;
+  }
+
+  /// Card expansível de um doador com vários interesses/doações na ONG.
+  Widget _grupoDoador(List<Interesse> lista) {
+    final cs = Theme.of(context).colorScheme;
+    final primeiro = lista.first;
+    final nome = primeiro.doadorNome ?? 'Doador';
+    // Concluídas ao fim (mantendo a ordem original dentro de cada grupo).
+    final naoConcluidas =
+        lista.where((i) => i.status != 'CONCLUIDO').toList();
+    final concluidas = lista.where((i) => i.status == 'CONCLUIDO').toList();
+    final ordenadas = [...naoConcluidas, ...concluidas];
+    final nConcluidas = concluidas.length;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Theme(
+        // Remove as divisórias padrão do ExpansionTile (visual mais limpo).
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: true,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          childrenPadding: const EdgeInsets.only(bottom: 8),
+          leading: CircleAvatar(
+            backgroundColor: _verde.withValues(alpha: 0.12),
+            child: const Icon(Icons.person, color: _verde),
+          ),
+          title: Row(
+            children: [
+              Flexible(
+                child: Text(nome,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _verde.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${lista.length} doações',
+                  style: const TextStyle(
+                      color: _verde,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    nConcluidas > 0
+                        ? '$nConcluidas concluída${nConcluidas > 1 ? "s" : ""}'
+                            ' • ${lista.length - nConcluidas} em andamento'
+                        : '${lista.length} interesses',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 12, color: cs.onSurfaceVariant),
+                  ),
+                ),
+                if (primeiro.doadorId != null)
+                  TextButton.icon(
+                    onPressed: () => _verPerfilDoador(primeiro),
+                    icon: const Icon(Icons.person_search_outlined, size: 18),
+                    label: const Text('Ver perfil do doador'),
+                  ),
+              ],
+            ),
+          ),
+          children: [
+            for (final it in ordenadas)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: _cardInteresse(it, emGrupo: true),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1045,11 +1315,17 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   }
 
   /// Card de um interesse/match, com as acoes do seu status atual.
-  Widget _cardInteresse(Interesse it) {
+  ///
+  /// [emGrupo] = true quando o card e renderizado DENTRO de um grupo por
+  /// doador: nesse caso o botao "Ver perfil do doador" e omitido (o grupo ja
+  /// tem um unico botao no cabecalho, evitando repeticao).
+  Widget _cardInteresse(Interesse it, {bool emGrupo = false}) {
     final cs = Theme.of(context).colorScheme;
     final concluido = it.status == 'CONCLUIDO';
     final jaAvaliei =
         it.doadorId != null && _minhasAvaliacoes.containsKey(it.doadorId);
+    // Match concluido ainda sem prestacao de contas (aparece em _pendencias).
+    final semPrestacao = _pendencias.any((p) => p.interesseId == it.id);
 
     // Acoes por status (em Wrap: nunca estouram a largura do card).
     final List<Widget> acoes;
@@ -1070,52 +1346,53 @@ class _PainelConteudoState extends State<_PainelConteudo> {
         ];
         break;
       case 'ACEITO':
+        // Match ativo: Conversar + Prestar contas + Doação recebida + Ver perfil.
         acoes = [
-          OutlinedButton.icon(
-            onPressed: () => _abrirPrestarContas(it.id),
-            icon: const Icon(Icons.receipt_long, size: 18),
-            label: const Text('Prestar contas'),
-          ),
-          OutlinedButton.icon(
-            onPressed: () => _verPrestacoes(it),
-            icon: const Icon(Icons.photo_library_outlined, size: 18),
-            label: const Text('Ver prestações'),
-          ),
           ElevatedButton.icon(
             onPressed: () => _abrirChat(it),
             icon: const Icon(Icons.chat),
             label: const Text('Conversar'),
+          ),
+          OutlinedButton.icon(
+            onPressed: () => _abrirPrestarContas(it.id),
+            icon: const Icon(Icons.receipt_long, size: 18),
+            label: const Text('Prestar contas'),
           ),
           ElevatedButton.icon(
             onPressed: () => _concluir(it),
             icon: const Icon(Icons.check_circle_outline),
             label: const Text('Doação recebida'),
           ),
-        ];
-        break;
-      case 'CONCLUIDO':
-        acoes = [
-          OutlinedButton.icon(
-            onPressed: () => _abrirPrestarContas(it.id),
-            icon: const Icon(Icons.receipt_long, size: 18),
-            label: const Text('Prestar contas'),
-          ),
-          OutlinedButton.icon(
-            onPressed: () => _verPrestacoes(it),
-            icon: const Icon(Icons.photo_library_outlined, size: 18),
-            label: const Text('Ver prestações'),
-          ),
-          OutlinedButton.icon(
-            onPressed: () => _abrirChat(it),
-            icon: const Icon(Icons.chat_outlined, size: 18),
-            label: const Text('Conversar'),
-          ),
-          if (it.doadorId != null) ...[
+          if (!emGrupo && it.doadorId != null)
             TextButton.icon(
               onPressed: () => _verPerfilDoador(it),
               icon: const Icon(Icons.person_search_outlined, size: 18),
               label: const Text('Ver perfil do doador'),
             ),
+        ];
+        break;
+      case 'CONCLUIDO':
+        // Match encerrado: o chat vira Histórico (só leitura); prestar contas
+        // apenas enquanto pendente, senão ver o que já foi prestado.
+        acoes = [
+          OutlinedButton.icon(
+            onPressed: () => _abrirChat(it, historico: true),
+            icon: const Icon(Icons.history, size: 18),
+            label: const Text('Histórico da conversa'),
+          ),
+          if (semPrestacao)
+            OutlinedButton.icon(
+              onPressed: () => _abrirPrestarContas(it.id),
+              icon: const Icon(Icons.receipt_long, size: 18),
+              label: const Text('Prestar contas'),
+            )
+          else
+            OutlinedButton.icon(
+              onPressed: () => _verPrestacoes(it),
+              icon: const Icon(Icons.photo_library_outlined, size: 18),
+              label: const Text('Ver prestações'),
+            ),
+          if (it.doadorId != null)
             ElevatedButton.icon(
               onPressed: () => _avaliarDoador(it),
               icon: Icon(jaAvaliei ? Icons.edit : Icons.star_outline,
@@ -1123,7 +1400,12 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               label:
                   Text(jaAvaliei ? 'Editar avaliação' : 'Avaliar doador'),
             ),
-          ],
+          if (!emGrupo && it.doadorId != null)
+            TextButton.icon(
+              onPressed: () => _verPerfilDoador(it),
+              icon: const Icon(Icons.person_search_outlined, size: 18),
+              label: const Text('Ver perfil do doador'),
+            ),
         ];
         break;
       default:
@@ -1223,7 +1505,9 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     );
   }
 
-  Future<void> _abrirChat(Interesse it) async {
+  /// Abre o chat do match. Para matches CONCLUIDOS ([historico] = true) abre em
+  /// modo SO LEITURA ("Histórico da conversa", sem campo de envio).
+  Future<void> _abrirChat(Interesse it, {bool historico = false}) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -1232,6 +1516,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
           titulo: it.doadorNome ?? 'Doador',
           doadorId: it.doadorId,
           bloqueadoPelaOng: it.bloqueadoPelaOng,
+          somenteLeitura: historico,
         ),
       ),
     );
@@ -1626,7 +1911,11 @@ class _PainelConteudoState extends State<_PainelConteudo> {
 class _FormNecessidade extends StatefulWidget {
   final int ongId;
 
-  const _FormNecessidade({required this.ongId});
+  /// Quando informada, o formulario abre em modo EDICAO (pre-preenchido) e o
+  /// salvar faz PUT em vez de POST.
+  final Necessidade? necessidade;
+
+  const _FormNecessidade({required this.ongId, this.necessidade});
 
   @override
   State<_FormNecessidade> createState() => _FormNecessidadeState();
@@ -1637,11 +1926,30 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
   final _tituloController = TextEditingController();
   final _descricaoController = TextEditingController();
   // Categoria canonica (mesma lista do mobile e do backend).
-  String _categoria = Categorias.todas.first.valor;
+  late String _categoria;
   bool _urgente = false;
   bool _enviando = false;
 
   final NecessidadeService _service = NecessidadeService();
+
+  bool get _edicao => widget.necessidade != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final n = widget.necessidade;
+    _categoria = n?.categoria ?? Categorias.todas.first.valor;
+    // Categoria fora da lista canonica (dado antigo): volta ao padrao para o
+    // Dropdown nao quebrar por valor inexistente.
+    if (!Categorias.todas.any((c) => c.valor == _categoria)) {
+      _categoria = Categorias.todas.first.valor;
+    }
+    if (n != null) {
+      _tituloController.text = n.titulo;
+      _descricaoController.text = n.descricao;
+      _urgente = n.urgente;
+    }
+  }
 
   @override
   void dispose() {
@@ -1654,13 +1962,23 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _enviando = true);
     try {
-      await _service.criar(
-        titulo: _tituloController.text.trim(),
-        descricao: _descricaoController.text.trim(),
-        categoria: _categoria,
-        urgente: _urgente,
-        ongId: widget.ongId,
-      );
+      if (_edicao) {
+        await _service.editar(
+          id: widget.necessidade!.id,
+          titulo: _tituloController.text.trim(),
+          descricao: _descricaoController.text.trim(),
+          categoria: _categoria,
+          urgente: _urgente,
+        );
+      } else {
+        await _service.criar(
+          titulo: _tituloController.text.trim(),
+          descricao: _descricaoController.text.trim(),
+          categoria: _categoria,
+          urgente: _urgente,
+          ongId: widget.ongId,
+        );
+      }
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
@@ -1678,7 +1996,7 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Publicar necessidade'),
+      title: Text(_edicao ? 'Editar necessidade' : 'Publicar necessidade'),
       content: SizedBox(
         width: 420,
         child: Form(
@@ -1751,7 +2069,7 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
                   child: CircularProgressIndicator(
                       strokeWidth: 2, color: Colors.white),
                 )
-              : const Text('Publicar'),
+              : Text(_edicao ? 'Salvar' : 'Publicar'),
         ),
       ],
     );

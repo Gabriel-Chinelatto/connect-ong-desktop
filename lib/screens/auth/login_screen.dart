@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
@@ -170,45 +171,199 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (usuario != null) {
-      // Este painel e EXCLUSIVO de ONGs. Uma conta de doador (cadastrada no app
-      // mobile) tem credenciais validas, mas nao pode gerenciar uma ONG. Sem esta
-      // barreira, um doador entraria no painel administrativo (e, no fallback do
-      // seletor, veria/gerenciaria qualquer ONG). Bloqueamos aqui no cliente.
-      if (usuario['tipo'] != 'ONG') {
-        await ApiService.setToken(null); // descarta o JWT do doador
+      // 2FA ligado: o login veio SEM token, pedindo a segunda etapa (código).
+      if (usuario['requer2fa'] == true) {
+        final email =
+            (usuario['email'] ?? _emailController.text).toString();
+        final codigoDemo = usuario['codigoDemo']?.toString();
+        final concluido = await _abrir2fa(email, codigoDemo);
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Este acesso e exclusivo para ONGs. Use o app do doador para contas de doador.'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        if (concluido != null) await _concluirLogin(concluido);
         return;
       }
-
-      // Carrega as preferencias (tema, fonte, etc.) do usuario.
-      final id = usuario['id'];
-      if (id is int) {
-        await ConfigController.instance.carregar(id);
-        if (!mounted) return;
-      }
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PainelOngScreen(
-            emailUsuario: _emailController.text,
-            ongId: usuario!['ongId'],
-            ongNome: usuario['nome'],
-          ),
-        ),
-      );
+      await _concluirLogin(usuario);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('E-mail ou senha inválidos')),
       );
     }
+  }
+
+  /// Conclui o login (comum ao fluxo normal e ao 2FA): valida que é uma conta
+  /// de ONG, carrega preferências, guarda o e-mail da sessão e abre o painel.
+  Future<void> _concluirLogin(Map<String, dynamic> usuario) async {
+    // Este painel e EXCLUSIVO de ONGs. Uma conta de doador (cadastrada no app
+    // mobile) tem credenciais validas, mas nao pode gerenciar uma ONG. Sem esta
+    // barreira, um doador entraria no painel administrativo (e, no fallback do
+    // seletor, veria/gerenciaria qualquer ONG). Bloqueamos aqui no cliente.
+    if (usuario['tipo'] != 'ONG') {
+      await ApiService.setToken(null); // descarta o JWT do doador
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Este acesso e exclusivo para ONGs. Use o app do doador para contas de doador.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    // Guarda o e-mail da sessao (usado, ex., no "Alterar e-mail").
+    ConfigController.instance
+        .setUsuarioEmail((usuario['email'] ?? _emailController.text).toString());
+
+    // Carrega as preferencias (tema, fonte, etc.) do usuario.
+    final id = usuario['id'];
+    if (id is int) {
+      await ConfigController.instance.carregar(id);
+      if (!mounted) return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PainelOngScreen(
+          emailUsuario: _emailController.text,
+          ongId: usuario['ongId'],
+          ongNome: usuario['nome'],
+        ),
+      ),
+    );
+  }
+
+  /// Etapa do código 2FA: dialog com campo de 6 dígitos (e card de demo quando
+  /// o servidor devolve [codigoDemo]). Valida via POST /auth/login-2fa e
+  /// retorna os dados do usuário autenticado (com token) ou null se cancelado.
+  Future<Map<String, dynamic>?> _abrir2fa(
+      String email, String? codigoDemo) {
+    final codigoController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool enviando = false;
+
+    return showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setLocal) => AlertDialog(
+          title: const Text('Verificação em duas etapas'),
+          content: SizedBox(
+            width: 360,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Enviamos um código de 6 dígitos para\n$email.',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  if (codigoDemo != null && codigoDemo.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.primaryLight),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Modo demonstração',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary),
+                          ),
+                          const SizedBox(height: 4),
+                          SelectableText(
+                            codigoDemo,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: codigoController,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Código (6 dígitos)',
+                      counterText: '',
+                    ),
+                    validator: (v) => (v == null || v.trim().length != 6)
+                        ? 'Informe os 6 dígitos'
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed:
+                  enviando ? null : () => Navigator.pop(dialogContext, null),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: enviando
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setLocal(() => enviando = true);
+                      try {
+                        final dados = await AuthService().loginDoisFatores(
+                          email,
+                          codigoController.text.trim(),
+                        );
+                        if (!dialogContext.mounted) return;
+                        if (dados != null) {
+                          Navigator.pop(dialogContext, dados);
+                        } else {
+                          setLocal(() => enviando = false);
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                            const SnackBar(
+                              content: Text('Código inválido ou expirado.'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setLocal(() => enviando = false);
+                        if (!dialogContext.mounted) return;
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(
+                            content: Text(ApiService.mensagemAmigavel(e)),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                      }
+                    },
+              child: enviando
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Entrar'),
+            ),
+          ],
+        ),
+      ),
+    ).whenComplete(codigoController.dispose);
   }
 
   @override

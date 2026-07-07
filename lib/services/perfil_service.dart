@@ -53,6 +53,42 @@ class PerfilService {
     }
   }
 
+  /// Altera o e-mail de login do usuario autenticado.
+  ///
+  /// Contrato: PUT /usuarios/{id}/email {novoEmail, senha}. Exige a senha
+  /// atual como confirmacao. Mapeia os status conhecidos para mensagens
+  /// amigaveis: 401 (senha incorreta), 409 (e-mail ja em uso), 404/405
+  /// (rota indisponivel no backend antigo).
+  Future<void> alterarEmail(
+    int usuarioId,
+    String novoEmail,
+    String senha,
+  ) async {
+    final response = await http.put(
+      Uri.parse('${ApiService.baseUrl}/usuarios/$usuarioId/email'),
+      headers: ApiService.jsonHeaders(),
+      body: jsonEncode({'novoEmail': novoEmail, 'senha': senha}),
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode >= 200 && response.statusCode < 300) return;
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw Exception('Senha incorreta.');
+    }
+    if (response.statusCode == 409) {
+      throw Exception('Este e-mail já está em uso por outra conta.');
+    }
+    if (response.statusCode == 404 || response.statusCode == 405) {
+      throw Exception(
+          'Alteração de e-mail indisponível nesta versão do servidor.');
+    }
+    String msg = 'Erro ao alterar o e-mail';
+    try {
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      if (body is Map && body['erro'] != null) msg = body['erro'].toString();
+    } catch (_) {}
+    throw Exception(msg);
+  }
+
   /// Exclui (soft-delete) a conta do proprio usuario autenticado.
   ///
   /// O backend desativa a conta (nao loga mais) e, sendo ONG, remove o perfil

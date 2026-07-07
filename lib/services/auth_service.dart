@@ -38,11 +38,43 @@ class AuthService {
     if (response.statusCode == 200) {
       final dados =
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      // 2FA ligado: o backend responde 200 com {requer2fa:true, email,
+      // (demo) codigoDemo} e SEM token. Nao guarda token; a tela abre a etapa
+      // do codigo e conclui via [loginDoisFatores].
+      if (dados['requer2fa'] == true) {
+        return dados;
+      }
       // Captura o token JWT retornado pelo login para as proximas chamadas.
       await ApiService.setToken(dados['accessToken'] as String?);
       return dados;
     }
     // Status != 200 (ex.: 401/403) = credenciais invalidas.
+    return null;
+  }
+
+  /// Segunda etapa do login com 2FA: valida o [codigo] de 6 digitos enviado
+  /// ao e-mail. Contrato: POST /auth/login-2fa {email, codigo}. Em caso de
+  /// sucesso captura o JWT e retorna os dados do usuario; codigo invalido
+  /// (401/400) retorna null. Falhas de conexao sao relancadas.
+  Future<Map<String, dynamic>?> loginDoisFatores(
+    String email,
+    String codigo,
+  ) async {
+    final response = await http
+        .post(
+          Uri.parse('${ApiService.baseUrl}/auth/login-2fa'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'email': email, 'codigo': codigo}),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      final dados =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      await ApiService.setToken(dados['accessToken'] as String?);
+      return dados;
+    }
+    // Codigo invalido/expirado.
     return null;
   }
 }

@@ -47,12 +47,18 @@ class ChatOngScreen extends StatefulWidget {
   /// Estado inicial do bloqueio (vindo do match, campo `bloqueadoPelaOng`).
   final bool bloqueadoPelaOng;
 
+  /// Modo histórico (só leitura): para matches CONCLUIDOS o chat vira um
+  /// registro somente-leitura — sem campo de envio, sem polling, e o
+  /// cabeçalho passa a ser "Histórico da conversa".
+  final bool somenteLeitura;
+
   const ChatOngScreen({
     super.key,
     required this.interesseId,
     required this.titulo,
     this.doadorId,
     this.bloqueadoPelaOng = false,
+    this.somenteLeitura = false,
   });
 
   @override
@@ -100,8 +106,11 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
   void initState() {
     super.initState();
     _carregar(primeira: true);
-    _carregarStatus();
     _carregarDoador();
+    // Modo histórico (só leitura): carrega uma vez e não faz polling nem
+    // consulta presença/bloqueio (nada disso é editável aqui).
+    if (widget.somenteLeitura) return;
+    _carregarStatus();
     _carregarBloqueio();
     _timer = Timer.periodic(
       const Duration(seconds: 2),
@@ -359,7 +368,8 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
-            onLongPress: () => _abrirSeletorReacao(m),
+            onLongPress:
+                widget.somenteLeitura ? null : () => _abrirSeletorReacao(m),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 420),
               margin: const EdgeInsets.only(top: 4, left: 12, right: 12),
@@ -503,6 +513,35 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
     );
   }
 
+  // Rodape do modo historico (so leitura): a doacao ja foi concluida, entao
+  // nao ha mais envio — o chat serve como registro da conversa.
+  Widget _avisoHistorico() {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.history, size: 16, color: cs.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Doação concluída — este é o histórico da conversa (somente leitura).',
+                style: TextStyle(fontSize: 13, color: cs.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Aviso discreto no lugar da barra de digitacao quando o doador esta
   // bloqueado pela ONG.
   Widget _avisoBloqueado() {
@@ -536,8 +575,10 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        titleSpacing: 4,
-        title: _cabecalhoDoador(),
+        titleSpacing: widget.somenteLeitura ? null : 4,
+        title: widget.somenteLeitura
+            ? const Text('Histórico da conversa')
+            : _cabecalhoDoador(),
       ),
       body: Center(
         child: ConstrainedBox(
@@ -593,7 +634,9 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
                     ],
                   ),
                 ),
-              if (_bloqueado)
+              if (widget.somenteLeitura)
+                _avisoHistorico()
+              else if (_bloqueado)
                 _avisoBloqueado()
               else
               Padding(

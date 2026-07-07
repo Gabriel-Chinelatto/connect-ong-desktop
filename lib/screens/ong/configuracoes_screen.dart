@@ -187,6 +187,23 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: _abrirAlterarSenha,
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.alternate_email),
+                    title: const Text('Alterar e-mail'),
+                    subtitle: const Text('Troca o e-mail de login da conta'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _abrirAlterarEmail,
+                  ),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.verified_user_outlined),
+                    title: const Text('Verificação em duas etapas'),
+                    subtitle: const Text(
+                        'Ao entrar, pediremos um código de 6 dígitos enviado '
+                        'ao seu e-mail — uma camada extra de segurança.'),
+                    value: _p.doisFatores,
+                    activeThumbColor: AppColors.primary,
+                    onChanged: (v) => _mudar(() => _p.doisFatores = v),
+                  ),
                 ]),
                 _cartaoSecao('Termos e Privacidade', Icons.gavel_outlined, [
                   ListTile(
@@ -504,6 +521,102 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
         ],
       ),
     );
+  }
+
+  /// Dialog para trocar o e-mail de login (novo e-mail + senha de confirmação).
+  Future<void> _abrirAlterarEmail() async {
+    final novoEmail = TextEditingController();
+    final senha = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final usuarioId = ConfigController.instance.usuarioId;
+    bool enviando = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setLocal) => AlertDialog(
+          title: const Text('Alterar e-mail'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: novoEmail,
+                  autofocus: true,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'Novo e-mail'),
+                  validator: (v) {
+                    final t = (v ?? '').trim();
+                    if (t.isEmpty) return 'Informe o novo e-mail';
+                    if (!t.contains('@') || !t.contains('.')) {
+                      return 'E-mail inválido';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: senha,
+                  obscureText: true,
+                  decoration:
+                      const InputDecoration(labelText: 'Sua senha atual'),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? 'Informe sua senha' : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed:
+                  enviando ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: enviando
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      if (usuarioId == null) return;
+                      setLocal(() => enviando = true);
+                      try {
+                        final email = novoEmail.text.trim();
+                        await PerfilService()
+                            .alterarEmail(usuarioId, email, senha.text);
+                        // Atualiza o e-mail da sessão em memória.
+                        ConfigController.instance.setUsuarioEmail(email);
+                        if (!dialogContext.mounted) return;
+                        Navigator.pop(dialogContext);
+                        if (!mounted) return;
+                        AppSnackbar.sucesso(
+                            context, 'E-mail alterado com sucesso! 💚');
+                      } catch (e) {
+                        setLocal(() => enviando = false);
+                        if (!dialogContext.mounted) return;
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(
+                            content: Text(ApiService.mensagemAmigavel(e)),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                      }
+                    },
+              child: enviando
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Salvar'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    novoEmail.dispose();
+    senha.dispose();
   }
 
   Future<void> _abrirAlterarSenha() async {

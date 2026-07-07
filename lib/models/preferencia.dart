@@ -16,6 +16,10 @@ class Preferencia {
   bool receberContatos;
   bool receberSugestoes;
 
+  /// Verificação em duas etapas (2FA) no login. Persistida junto das demais
+  /// preferências. Campo ausente (backend antigo) = desligado.
+  bool doisFatores;
+
   Preferencia({
     this.tema = 'AUTOMATICO',
     this.tamanhoFonte = 'MEDIA',
@@ -32,6 +36,7 @@ class Preferencia {
     this.perfilPublico = true,
     this.receberContatos = true,
     this.receberSugestoes = true,
+    this.doisFatores = false,
   });
 
   factory Preferencia.fromJson(Map<String, dynamic> j) {
@@ -52,6 +57,7 @@ class Preferencia {
       perfilPublico: b(j['perfilPublico'], true),
       receberContatos: b(j['receberContatos'], true),
       receberSugestoes: b(j['receberSugestoes'], true),
+      doisFatores: b(j['doisFatores'], false),
     );
   }
 
@@ -71,6 +77,7 @@ class Preferencia {
         'perfilPublico': perfilPublico,
         'receberContatos': receberContatos,
         'receberSugestoes': receberSugestoes,
+        'doisFatores': doisFatores,
       };
 
   Preferencia copy() => Preferencia.fromJson(toJson());

@@ -21,6 +21,7 @@ class ConfigController extends ChangeNotifier {
 
   Preferencia _prefs = Preferencia();
   int? _usuarioId;
+  String? _usuarioEmail;
 
   // A flag "Modo Feira" e um estado LOCAL do dispositivo (nao do usuario): ela
   // controla se a tela de login exibe as credenciais de demonstracao, e por isso
@@ -30,6 +31,13 @@ class ConfigController extends ChangeNotifier {
 
   Preferencia get prefs => _prefs;
   int? get usuarioId => _usuarioId;
+  String? get usuarioEmail => _usuarioEmail;
+
+  /// Atualiza o e-mail da sessao em memoria (ex.: apos "Alterar e-mail").
+  void setUsuarioEmail(String? email) {
+    _usuarioEmail = email;
+    notifyListeners();
+  }
 
   bool get modoFeira => _modoFeira;
 
@@ -112,6 +120,7 @@ class ConfigController extends ChangeNotifier {
   void limpar() {
     _prefs = Preferencia();
     _usuarioId = null;
+    _usuarioEmail = null;
     notifyListeners();
   }
 }
