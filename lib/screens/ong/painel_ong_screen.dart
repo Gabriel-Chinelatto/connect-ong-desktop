@@ -30,6 +30,7 @@ import 'dialogs_match.dart';
 import 'editar_ong_screen.dart';
 import 'perfil_publico_ong_screen.dart';
 import 'perfil_publico_doador_screen.dart';
+import 'sobre_projeto_screen.dart';
 import 'mural_impacto_screen.dart';
 import 'ranking_transparencia_screen.dart';
 import 'conquistas_screen.dart';
@@ -725,6 +726,14 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                 ),
               ),
               icon: const Icon(Icons.storefront_outlined),
+            ),
+            IconButton(
+              tooltip: 'Sobre o projeto',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SobreProjetoScreen()),
+              ),
+              icon: const Icon(Icons.info_outline),
             ),
             IconButton(
               tooltip: 'Configurações',

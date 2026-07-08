@@ -15,6 +15,7 @@
 //   perfil-doador -> perfil publico do doador 18 (botao Bloquear/Desbloquear)
 //   bloqueados    -> lista de doadores bloqueados (Configuracoes)
 //   configuracoes -> central de configuracoes (salvar em lote)
+//   sobre         -> "Sobre o projeto" + changelog (Versoes). Use ?dark=1 p/ escuro
 //   cadastro      -> cadastro de ONG (dropdown UF + autocomplete de cidade)
 //   editar-ong    -> edicao do perfil da ONG (UF/cidade por selecao)
 import 'dart:convert';
@@ -30,6 +31,7 @@ import 'screens/ong/editar_ong_screen.dart';
 import 'screens/ong/painel_ong_screen.dart';
 import 'screens/ong/perfil_publico_doador_screen.dart';
 import 'screens/ong/perfil_publico_ong_screen.dart';
+import 'screens/ong/sobre_projeto_screen.dart';
 import 'services/api_service.dart';
 import 'theme/app_theme.dart';
 
@@ -49,18 +51,23 @@ Future<void> main() async {
   await ApiService.setToken(dados['accessToken'] as String?);
 
   final tela = Uri.base.fragment.isEmpty ? 'painel' : Uri.base.fragment;
-  runApp(_HarnessApp(tela: tela));
+  // ?dark=1 força o tema escuro (para conferir legibilidade no modo escuro).
+  final escuro = Uri.base.queryParameters['dark'] == '1';
+  runApp(_HarnessApp(tela: tela, escuro: escuro));
 }
 
 class _HarnessApp extends StatelessWidget {
   final String tela;
-  const _HarnessApp({required this.tela});
+  final bool escuro;
+  const _HarnessApp({required this.tela, this.escuro = false});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
+      darkTheme: AppTheme.dark(),
+      themeMode: escuro ? ThemeMode.dark : ThemeMode.light,
       home: _telaPorNome(tela),
     );
   }
@@ -88,6 +95,8 @@ class _HarnessApp extends StatelessWidget {
         return const DoadoresBloqueadosScreen();
       case 'configuracoes':
         return const ConfiguracoesScreen();
+      case 'sobre':
+        return const SobreProjetoScreen();
       case 'cadastro':
         return const CadastroOngScreen();
       case 'editar-ong':
