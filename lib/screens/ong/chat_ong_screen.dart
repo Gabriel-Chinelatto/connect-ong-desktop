@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/mensagem.dart';
 import '../../services/bloqueio_service.dart';
@@ -649,17 +649,39 @@ class _ChatOngScreenState extends State<ChatOngScreen> {
                       onPressed: _enviando ? null : _escolherAnexo,
                     ),
                     Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        minLines: 1,
-                        maxLines: 4,
-                        decoration: const InputDecoration(
-                          hintText: 'Mensagem...',
-                        ),
-                        onChanged: (texto) {
-                          if (texto.isNotEmpty) _sinalizarDigitando();
+                      // Enter envia / Shift+Enter quebra linha (estilo WhatsApp).
+                      // O Focus intercepta a tecla ANTES de o campo multiline
+                      // inserir o \n: Enter sem Shift chama _enviar e consome o
+                      // evento (KeyEventResult.handled); com Shift o evento passa
+                      // e o \n entra normalmente. O guard _enviando (dentro de
+                      // _enviar) evita duplo-envio ao segurar a tecla.
+                      child: Focus(
+                        onKeyEvent: (node, event) {
+                          final ehEnter = event.logicalKey ==
+                                  LogicalKeyboardKey.enter ||
+                              event.logicalKey == LogicalKeyboardKey.numpadEnter;
+                          if (ehEnter &&
+                              !HardwareKeyboard.instance.isShiftPressed) {
+                            // Consome down/repeat/up para o \n nunca ser inserido;
+                            // dispara o envio apenas no pressionar (KeyDownEvent).
+                            if (event is KeyDownEvent) _enviar();
+                            return KeyEventResult.handled;
+                          }
+                          return KeyEventResult.ignored;
                         },
-                        onSubmitted: (_) => _enviar(),
+                        child: TextField(
+                          controller: _controller,
+                          minLines: 1,
+                          maxLines: 5,
+                          keyboardType: TextInputType.multiline,
+                          textInputAction: TextInputAction.newline,
+                          decoration: const InputDecoration(
+                            hintText: 'Mensagem...',
+                          ),
+                          onChanged: (texto) {
+                            if (texto.isNotEmpty) _sinalizarDigitando();
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
