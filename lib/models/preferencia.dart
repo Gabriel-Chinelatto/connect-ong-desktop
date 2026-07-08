@@ -41,6 +41,11 @@ class Preferencia {
 
   factory Preferencia.fromJson(Map<String, dynamic> j) {
     bool b(dynamic v, bool padrao) => v is bool ? v : padrao;
+    // O backend armazena "doisFatores" como INTEIRO (0/1), nao como boolean:
+    // o GET devolve 0/1 e o PUT exige 0/1 (enviar `true`/`false` gera HTTP 400
+    // "Corpo da requisicao invalido ou mal formatado."). Aceitamos ambos os
+    // formatos na leitura para robustez (bool de versoes antigas ou int atual).
+    bool doisFatores(dynamic v) => v == true || v == 1;
     return Preferencia(
       tema: j['tema'] ?? 'AUTOMATICO',
       tamanhoFonte: j['tamanhoFonte'] ?? 'MEDIA',
@@ -57,7 +62,7 @@ class Preferencia {
       perfilPublico: b(j['perfilPublico'], true),
       receberContatos: b(j['receberContatos'], true),
       receberSugestoes: b(j['receberSugestoes'], true),
-      doisFatores: b(j['doisFatores'], false),
+      doisFatores: doisFatores(j['doisFatores']),
     );
   }
 
@@ -77,7 +82,8 @@ class Preferencia {
         'perfilPublico': perfilPublico,
         'receberContatos': receberContatos,
         'receberSugestoes': receberSugestoes,
-        'doisFatores': doisFatores,
+        // Enviar como INTEIRO (1/0): o backend rejeita boolean com HTTP 400.
+        'doisFatores': doisFatores ? 1 : 0,
       };
 
   Preferencia copy() => Preferencia.fromJson(toJson());

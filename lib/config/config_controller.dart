@@ -112,9 +112,13 @@ class ConfigController extends ChangeNotifier {
   Future<void> salvar(Preferencia novo) async {
     _prefs = novo;
     notifyListeners();
-    if (_usuarioId != null) {
-      await _service.salvar(_usuarioId!, novo);
+    // Sem usuario na sessao (ex.: token perdido apos refresh no web) nao ha
+    // como persistir: propaga o erro para a tela NAO reportar sucesso falso
+    // (antes: retornava em silencio, limpava o "pendente" e nada era salvo).
+    if (_usuarioId == null) {
+      throw Exception('Sessão expirada. Entre novamente para salvar.');
     }
+    await _service.salvar(_usuarioId!, novo);
   }
 
   void limpar() {
