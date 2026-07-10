@@ -249,6 +249,18 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   List<Atividade> _atividades = [];
   bool _carregando = true;
 
+  // Sub-aba dos interesses: 0 = Ativos (pendentes+aceitos), 1 = Recusados,
+  // 2 = Concluídos. Separa o que precisa de acao do historico.
+  int _subInteresses = 0;
+
+  List<Interesse> get _interessesAtivos => _interesses
+      .where((i) => i.status == 'PENDENTE' || i.status == 'ACEITO')
+      .toList();
+  List<Interesse> get _interessesRecusados =>
+      _interesses.where((i) => i.status == 'RECUSADO').toList();
+  List<Interesse> get _interessesConcluidos =>
+      _interesses.where((i) => i.status == 'CONCLUIDO').toList();
+
   // Pendencias de prestacao de contas (matches CONCLUIDOS sem prestacao).
   // Alimenta o banner do topo e a secao no comeco da aba Interesses.
   List<PendenciaPrestacao> _pendencias = [];
@@ -660,6 +672,20 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     );
   }
 
+  // Item padrao dos menus da AppBar (icone + texto).
+  PopupMenuItem<int> _menuItem(int valor, IconData icon, String texto) {
+    return PopupMenuItem<int>(
+      value: valor,
+      child: Row(
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(width: 12),
+          Text(texto),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -670,89 +696,109 @@ class _PainelConteudoState extends State<_PainelConteudo> {
           title: const Text('Painel da ONG'),
           actions: [
             const NotificacaoBell(),
-            IconButton(
-              tooltip: 'Relatório PDF',
-              onPressed: _gerarRelatorioPdf,
-              icon: const Icon(Icons.picture_as_pdf_outlined),
+            // PERFIL: editar o perfil da ONG e ver o perfil público.
+            PopupMenuButton<int>(
+              tooltip: 'Perfil',
+              icon: const Icon(Icons.account_circle_outlined),
+              onSelected: (v) {
+                if (v == 0) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EditarOngScreen(ongId: widget.ong.id),
+                    ),
+                  );
+                } else if (v == 1) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PerfilPublicoOngScreen(
+                        ongId: widget.ong.id,
+                        ongNome: widget.ong.nome,
+                      ),
+                    ),
+                  );
+                }
+              },
+              itemBuilder: (_) => [
+                _menuItem(0, Icons.storefront_outlined,
+                    'Perfil da ONG (capa, endereço, fotos)'),
+                _menuItem(1, Icons.visibility_outlined,
+                    'Ver meu perfil público'),
+              ],
             ),
-            IconButton(
-              tooltip: 'Mural de Impacto',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const MuralImpactoScreen(),
-                ),
-              ),
-              icon: const Icon(Icons.public),
+            // TRANSPARÊNCIA & RELATÓRIOS: ranking, pontuação, conquistas,
+            // mural de impacto e relatório PDF.
+            PopupMenuButton<int>(
+              tooltip: 'Transparência e relatórios',
+              icon: const Icon(Icons.insights_outlined),
+              onSelected: (v) {
+                switch (v) {
+                  case 0:
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                const RankingTransparenciaScreen()));
+                    break;
+                  case 1:
+                    mostrarComoPontuar(context);
+                    break;
+                  case 2:
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                ConquistasScreen(ongId: widget.ong.id)));
+                    break;
+                  case 3:
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const MuralImpactoScreen()));
+                    break;
+                  case 4:
+                    _gerarRelatorioPdf();
+                    break;
+                }
+              },
+              itemBuilder: (_) => [
+                _menuItem(0, Icons.leaderboard_outlined,
+                    'Ranking de transparência'),
+                _menuItem(1, Icons.info_outline, 'Como pontuar'),
+                _menuItem(2, Icons.emoji_events_outlined, 'Conquistas'),
+                _menuItem(3, Icons.public, 'Mural de impacto'),
+                _menuItem(4, Icons.picture_as_pdf_outlined, 'Relatório PDF'),
+              ],
             ),
-            IconButton(
-              tooltip: 'Ranking de Transparência',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const RankingTransparenciaScreen(),
-                ),
-              ),
-              icon: const Icon(Icons.leaderboard_outlined),
-            ),
-            IconButton(
-              tooltip: 'Como pontuar (transparência)',
-              onPressed: () => mostrarComoPontuar(context),
-              icon: const Icon(Icons.info_outline),
-            ),
-            IconButton(
-              tooltip: 'Conquistas',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ConquistasScreen(ongId: widget.ong.id),
-                ),
-              ),
-              icon: const Icon(Icons.emoji_events_outlined),
-            ),
-            IconButton(
-              tooltip: 'Ver meu perfil público',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PerfilPublicoOngScreen(
-                    ongId: widget.ong.id,
-                    ongNome: widget.ong.nome,
-                  ),
-                ),
-              ),
-              icon: const Icon(Icons.visibility_outlined),
-            ),
-            IconButton(
-              tooltip: 'Perfil da ONG (capa, endereço e fotos do local)',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => EditarOngScreen(ongId: widget.ong.id),
-                ),
-              ),
-              icon: const Icon(Icons.storefront_outlined),
-            ),
-            IconButton(
-              tooltip: 'Sobre o projeto',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SobreProjetoScreen()),
-              ),
-              icon: const Icon(Icons.info_outline),
-            ),
-            IconButton(
-              tooltip: 'Configurações',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ConfiguracoesScreen()),
-              ),
-              icon: const Icon(Icons.settings_outlined),
-            ),
-            IconButton(
-              tooltip: 'Sair',
-              onPressed: widget.onLogout,
-              icon: const Icon(Icons.logout),
+            // CONTA: configurações, sobre o projeto e sair.
+            PopupMenuButton<int>(
+              tooltip: 'Conta',
+              icon: const Icon(Icons.more_vert),
+              onSelected: (v) {
+                switch (v) {
+                  case 0:
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const ConfiguracoesScreen()));
+                    break;
+                  case 1:
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const SobreProjetoScreen()));
+                    break;
+                  case 2:
+                    widget.onLogout();
+                    break;
+                }
+              },
+              itemBuilder: (_) => [
+                _menuItem(0, Icons.settings_outlined, 'Configurações'),
+                _menuItem(1, Icons.info_outline, 'Sobre o projeto'),
+                _menuItem(2, Icons.logout, 'Sair'),
+              ],
             ),
             const SizedBox(width: 8),
           ],
@@ -761,7 +807,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
             indicatorColor: _verde,
             tabs: [
               Tab(text: 'Necessidades (${_necessidades.length})'),
-              Tab(text: 'Interesses (${_interesses.length})'),
+              Tab(text: 'Interesses (${_interessesAtivos.length})'),
               Tab(text: 'Campanhas (${_campanhas.length})'),
               Tab(text: 'Doações (${_doacoes.length})'),
               Tab(text: 'Atividades (${_atividades.length})'),
@@ -932,8 +978,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
           _statMini(Icons.campaign, '${_necessidades.length}',
               'Necessidades', _verde),
           const SizedBox(width: 14),
-          _statMini(Icons.people, '${_interesses.length}', 'Interesses',
-              AppColors.info),
+          _statMini(Icons.people, '${_interessesAtivos.length}',
+              'Interesses ativos', AppColors.info),
           const SizedBox(width: 14),
           _statMini(Icons.handshake, '$matches', 'Matches fechados',
               Colors.pink.shade400),
@@ -1085,6 +1131,20 @@ class _PainelConteudoState extends State<_PainelConteudo> {
         detalhe: 'Assim que um doador se interessar, aparece aqui.',
       );
     }
+    final ativos = _interessesAtivos;
+    final recusados = _interessesRecusados;
+    final concluidos = _interessesConcluidos;
+    final fonte = _subInteresses == 1
+        ? recusados
+        : _subInteresses == 2
+            ? concluidos
+            : ativos;
+    final vazioMsg = _subInteresses == 1
+        ? 'Nenhuma doação recusada.'
+        : _subInteresses == 2
+            ? 'Nenhuma doação concluída ainda.'
+            : 'Nenhum interesse ativo no momento.';
+
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
@@ -1092,15 +1152,29 @@ class _PainelConteudoState extends State<_PainelConteudo> {
           _tituloSecao('Prestações de contas pendentes'),
           for (final p in _pendencias) _cardPendencia(p),
           const SizedBox(height: AppSpacing.md),
-          _tituloSecao('Interesses recebidos'),
         ],
-        if (_interesses.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(AppSpacing.md),
-            child: Text('Nenhum interesse recebido ainda.'),
+        // Separa o que precisa de acao (Ativos) do historico (Recusados/Concluidos).
+        SegmentedButton<int>(
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment(value: 0, label: Text('Ativos (${ativos.length})')),
+            ButtonSegment(
+                value: 1, label: Text('Recusados (${recusados.length})')),
+            ButtonSegment(
+                value: 2, label: Text('Concluídos (${concluidos.length})')),
+          ],
+          selected: {_subInteresses},
+          onSelectionChanged: (s) =>
+              setState(() => _subInteresses = s.first),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        if (fonte.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Text(vazioMsg),
           )
         else
-          ..._interessesAgrupados(),
+          ..._interessesAgrupados(fonte),
       ],
     );
   }
@@ -1112,11 +1186,11 @@ class _PainelConteudoState extends State<_PainelConteudo> {
   /// CONCLUÍDAS vão para o fim, dentro do grupo. Com apenas um interesse, o
   /// card é direto (como antes). Interesses sem doadorId identificável não são
   /// agrupados (aparecem como cards diretos).
-  List<Widget> _interessesAgrupados() {
+  List<Widget> _interessesAgrupados(List<Interesse> fonte) {
     final Map<int, List<Interesse>> porDoador = {};
     final List<int> ordem = [];
     final List<Interesse> semDoador = [];
-    for (final it in _interesses) {
+    for (final it in fonte) {
       final id = it.doadorId;
       if (id == null) {
         semDoador.add(it);
@@ -1149,12 +1223,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     final cs = Theme.of(context).colorScheme;
     final primeiro = lista.first;
     final nome = primeiro.doadorNome ?? 'Doador';
-    // Concluídas ao fim (mantendo a ordem original dentro de cada grupo).
-    final naoConcluidas =
-        lista.where((i) => i.status != 'CONCLUIDO').toList();
-    final concluidas = lista.where((i) => i.status == 'CONCLUIDO').toList();
-    final ordenadas = [...naoConcluidas, ...concluidas];
-    final nConcluidas = concluidas.length;
+    // Dentro da sub-aba todos compartilham a mesma situacao; mantem a ordem.
+    final ordenadas = lista;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1200,10 +1270,8 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               children: [
                 Flexible(
                   child: Text(
-                    nConcluidas > 0
-                        ? '$nConcluidas concluída${nConcluidas > 1 ? "s" : ""}'
-                            ' • ${lista.length - nConcluidas} em andamento'
-                        : '${lista.length} interesses',
+                    '${lista.length} ${lista.length == 1 ? "doação" : "doações"}'
+                    ' deste doador',
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                         fontSize: 12, color: cs.onSurfaceVariant),
@@ -1458,6 +1526,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                       const SizedBox(height: 2),
                       Text('Interesse em: ${it.necessidadeTitulo ?? "-"}',
                           style: TextStyle(color: cs.onSurfaceVariant)),
+                      _infoDatas(it),
                       // Há quantos dias o doador espera o aceite (só PENDENTE).
                       // A partir de 10 dias destaca em laranja (o backend também
                       // manda uma notificação nesse ponto e a cada 5 dias).
@@ -1586,6 +1655,60 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     if (d == null) return '';
     String dois(int n) => n.toString().padLeft(2, '0');
     return '${dois(d.day)}/${dois(d.month)}/${d.year}';
+  }
+
+  String _formatarDataHora(String? iso) {
+    if (iso == null) return '';
+    final d = DateTime.tryParse(iso);
+    if (d == null) return '';
+    String dois(int n) => n.toString().padLeft(2, '0');
+    return '${dois(d.day)}/${dois(d.month)}/${d.year} '
+        '${dois(d.hour)}:${dois(d.minute)}';
+  }
+
+  // Linha de datas do card, conforme o status: início (criação), aceite,
+  // conclusão (início + conclusão) e recusa (com hora).
+  Widget _infoDatas(Interesse it) {
+    final cs = Theme.of(context).colorScheme;
+    final ini = _formatarDataCurta(it.dataCriacao);
+    String texto;
+    switch (it.status) {
+      case 'RECUSADO':
+        final q = _formatarDataHora(it.dataStatus);
+        texto = q.isEmpty ? '' : 'Recusado em $q';
+        break;
+      case 'CONCLUIDO':
+        final fim = _formatarDataCurta(it.dataConclusao);
+        texto = [
+          if (ini.isNotEmpty) 'Início $ini',
+          if (fim.isNotEmpty) 'Concluído em $fim',
+        ].join(' · ');
+        break;
+      case 'ACEITO':
+        final ace = _formatarDataCurta(it.dataStatus);
+        texto = [
+          if (ini.isNotEmpty) 'Início $ini',
+          if (ace.isNotEmpty) 'Aceito em $ace',
+        ].join(' · ');
+        break;
+      default: // PENDENTE
+        texto = ini.isEmpty ? '' : 'Início $ini';
+    }
+    if (texto.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.event, size: 13, color: cs.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(texto,
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          ),
+        ],
+      ),
+    );
   }
 
   // ---- ABA 3: campanhas da ONG ----

@@ -9,8 +9,15 @@ class Interesse {
   final int? ongId;
   final String? ongNome;
 
+  /// Quando o interesse foi criado (ISO) — "início" do match.
+  final String? dataCriacao;
+
   /// Quando a ONG marcou a doação como recebida (ISO, só em CONCLUIDO).
   final String? dataConclusao;
+
+  /// Quando ocorreu a última mudança de status (ISO): aceite/recusa/conclusão.
+  /// Null enquanto PENDENTE. Base do "recusado em ..." / "aceito em ...".
+  final String? dataStatus;
 
   /// true quando a ONG bloqueou este doador (contrato novo do
   /// GET /interesses?ongId=). Campo ausente (backend antigo) = não bloqueado.
@@ -29,7 +36,9 @@ class Interesse {
     this.doadorNome,
     this.ongId,
     this.ongNome,
+    this.dataCriacao,
     this.dataConclusao,
+    this.dataStatus,
     this.bloqueadoPelaOng = false,
     this.diasEsperando,
   });
@@ -44,7 +53,9 @@ class Interesse {
       doadorNome: json['doadorNome'],
       ongId: json['ongId'],
       ongNome: json['ongNome'],
+      dataCriacao: json['dataCriacao'],
       dataConclusao: json['dataConclusao'],
+      dataStatus: json['dataStatus'],
       bloqueadoPelaOng: json['bloqueadoPelaOng'] == true,
       diasEsperando: (json['diasEsperando'] as num?)?.toInt(),
     );
