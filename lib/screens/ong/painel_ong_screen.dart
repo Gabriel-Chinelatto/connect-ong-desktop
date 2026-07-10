@@ -16,6 +16,7 @@ import '../../services/api_service.dart';
 import '../../services/doacao_financeira_service.dart';
 import '../../services/ong_service.dart';
 import '../../services/necessidade_service.dart';
+import '../../services/ia_service.dart';
 import '../../services/interesse_service.dart';
 import '../../services/prestacao_service.dart';
 import '../../services/avaliacao_doador_service.dart';
@@ -2115,8 +2116,11 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
   late String _categoria;
   bool _urgente = false;
   bool _enviando = false;
+  // Estado do botão "Escrever com IA" (redação assistida da descrição).
+  bool _redigindo = false;
 
   final NecessidadeService _service = NecessidadeService();
+  final IaService _ia = IaService();
 
   bool get _edicao => widget.necessidade != null;
 
@@ -2142,6 +2146,48 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
     _tituloController.dispose();
     _descricaoController.dispose();
     super.dispose();
+  }
+
+  // "Escrever com IA": usa o rascunho (título + descrição + categoria) para
+  // gerar um título curto e uma descrição clara e convincente para os doadores.
+  // Preenche os campos com o resultado. Sem chave de IA, o backend responde no
+  // modo "regras" (ainda limpa e estrutura o texto) — avisamos discretamente.
+  Future<void> _redigirComIa() async {
+    final rascunho = _descricaoController.text.trim();
+    final titulo = _tituloController.text.trim();
+    if (rascunho.isEmpty && titulo.isEmpty) {
+      AppSnackbar.erro(
+        context,
+        'Escreva um rascunho do que a ONG precisa e a IA melhora para você.',
+      );
+      return;
+    }
+    setState(() => _redigindo = true);
+    try {
+      final r = await _ia.redigirNecessidade(
+        titulo: titulo,
+        rascunho: rascunho.isNotEmpty ? rascunho : titulo,
+        categoria: _categoria,
+      );
+      if (!mounted) return;
+      setState(() {
+        if (r.titulo.isNotEmpty) _tituloController.text = r.titulo;
+        if (r.descricao.isNotEmpty) _descricaoController.text = r.descricao;
+        _redigindo = false;
+      });
+      if (r.modoRegras) {
+        AppSnackbar.info(
+          context,
+          'Texto organizado no modo básico (IA indisponível no momento).',
+        );
+      } else {
+        AppSnackbar.sucesso(context, 'Texto reescrito pela IA. Revise e ajuste.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _redigindo = false);
+      AppSnackbar.erro(context, ApiService.mensagemAmigavel(e));
+    }
   }
 
   Future<void> _publicar() async {
@@ -2208,7 +2254,24 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
                       ? 'Informe a descrição'
                       : null,
                 ),
-                const SizedBox(height: 12),
+                // Redação assistida por IA: transforma o rascunho num texto
+                // claro e convincente para os doadores.
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: (_enviando || _redigindo) ? null : _redigirComIa,
+                    icon: _redigindo
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_awesome, size: 18),
+                    label: Text(_redigindo ? 'Escrevendo…' : 'Escrever com IA'),
+                    style: TextButton.styleFrom(foregroundColor: _verde),
+                  ),
+                ),
+                const SizedBox(height: 4),
                 DropdownButtonFormField<String>(
                   initialValue: _categoria,
                   decoration: const InputDecoration(labelText: 'Categoria'),
