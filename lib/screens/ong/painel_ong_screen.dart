@@ -23,6 +23,7 @@ import '../../services/campanha_service.dart';
 import '../../services/atividade_service.dart';
 import '../../services/perfil_publico_service.dart';
 import '../../services/relatorio_pdf_service.dart';
+import '../../widgets/common/dialog_pontuacao.dart';
 import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
 import 'configuracoes_screen.dart';
@@ -695,6 +696,11 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               icon: const Icon(Icons.leaderboard_outlined),
             ),
             IconButton(
+              tooltip: 'Como pontuar (transparência)',
+              onPressed: () => mostrarComoPontuar(context),
+              icon: const Icon(Icons.info_outline),
+            ),
+            IconButton(
               tooltip: 'Conquistas',
               onPressed: () => Navigator.push(
                 context,
@@ -1341,6 +1347,13 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     switch (it.status) {
       case 'PENDENTE':
         acoes = [
+          // Ver o perfil do doador ANTES de decidir (reputação, avaliações).
+          if (!emGrupo && it.doadorId != null)
+            TextButton.icon(
+              onPressed: () => _verPerfilDoador(it),
+              icon: const Icon(Icons.person_search_outlined, size: 18),
+              label: const Text('Ver perfil do doador'),
+            ),
           TextButton.icon(
             onPressed: () => _recusar(it),
             icon: const Icon(Icons.close, color: AppColors.error),
@@ -1393,7 +1406,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
             OutlinedButton.icon(
               onPressed: () => _abrirPrestarContas(it.id),
               icon: const Icon(Icons.receipt_long, size: 18),
-              label: const Text('Prestar contas'),
+              label: const Text('Prestar contas (+5 pts)'),
             )
           else
             OutlinedButton.icon(
@@ -1445,6 +1458,39 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                       const SizedBox(height: 2),
                       Text('Interesse em: ${it.necessidadeTitulo ?? "-"}',
                           style: TextStyle(color: cs.onSurfaceVariant)),
+                      // Há quantos dias o doador espera o aceite (só PENDENTE).
+                      // A partir de 10 dias destaca em laranja (o backend também
+                      // manda uma notificação nesse ponto e a cada 5 dias).
+                      if (it.status == 'PENDENTE' && it.diasEsperando != null) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.hourglass_bottom,
+                                size: 14,
+                                color: it.diasEsperando! >= 10
+                                    ? Colors.orange.shade800
+                                    : cs.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              it.diasEsperando! <= 0
+                                  ? 'Aguardando seu aceite (hoje)'
+                                  : 'Há ${it.diasEsperando} '
+                                      '${it.diasEsperando == 1 ? "dia" : "dias"} '
+                                      'esperando seu aceite',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: it.diasEsperando! >= 10
+                                    ? Colors.orange.shade800
+                                    : cs.onSurfaceVariant,
+                                fontWeight: it.diasEsperando! >= 10
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       // Aviso discreto: a ONG bloqueou este doador (o envio
                       // de mensagens fica desabilitado no chat).
                       if (it.bloqueadoPelaOng) ...[
@@ -1620,7 +1666,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                 else
                   TextButton(
                     onPressed: () => _encerrarCampanha(c),
-                    child: const Text('Encerrar'),
+                    child: const Text('Encerrar (+5 pts)'),
                   ),
               ],
             ),

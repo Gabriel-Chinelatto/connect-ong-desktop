@@ -16,6 +16,10 @@ class Interesse {
   /// GET /interesses?ongId=). Campo ausente (backend antigo) = não bloqueado.
   final bool bloqueadoPelaOng;
 
+  /// Há quantos dias o doador espera o aceite (só em PENDENTE; null nos demais
+  /// status ou em backend antigo). Calculado no servidor a partir da dataCriacao.
+  final int? diasEsperando;
+
   const Interesse({
     required this.id,
     required this.status,
@@ -27,6 +31,7 @@ class Interesse {
     this.ongNome,
     this.dataConclusao,
     this.bloqueadoPelaOng = false,
+    this.diasEsperando,
   });
 
   factory Interesse.fromJson(Map<String, dynamic> json) {
@@ -41,6 +46,7 @@ class Interesse {
       ongNome: json['ongNome'],
       dataConclusao: json['dataConclusao'],
       bloqueadoPelaOng: json['bloqueadoPelaOng'] == true,
+      diasEsperando: (json['diasEsperando'] as num?)?.toInt(),
     );
   }
 }
