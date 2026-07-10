@@ -47,4 +47,13 @@ class NotificacaoService {
       throw Exception('Erro ao marcar notificações como lidas');
     }
   }
+
+  // Marca UMA notificação como lida (PUT /notificacoes/{id}/lida). O backend
+  // confere o dono pelo token.
+  Future<void> marcarLida(int id) async {
+    await http.put(
+      Uri.parse('${ApiService.baseUrl}/notificacoes/$id/lida'),
+      headers: ApiService.authHeaders(),
+    ).timeout(const Duration(seconds: 10));
+  }
 }

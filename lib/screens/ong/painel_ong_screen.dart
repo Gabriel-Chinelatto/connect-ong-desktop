@@ -672,15 +672,17 @@ class _PainelConteudoState extends State<_PainelConteudo> {
     );
   }
 
-  // Item padrao dos menus da AppBar (icone + texto).
+  // Item padrao dos menus da AppBar (icone + texto). O texto e Flexible para
+  // rotulos longos nao estourarem a largura do menu (overflow de pixels).
   PopupMenuItem<int> _menuItem(int valor, IconData icon, String texto) {
     return PopupMenuItem<int>(
       value: valor,
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 20),
           const SizedBox(width: 12),
-          Text(texto),
+          Flexible(child: Text(texto, overflow: TextOverflow.ellipsis)),
         ],
       ),
     );
@@ -721,8 +723,7 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                 }
               },
               itemBuilder: (_) => [
-                _menuItem(0, Icons.storefront_outlined,
-                    'Perfil da ONG (capa, endereço, fotos)'),
+                _menuItem(0, Icons.storefront_outlined, 'Editar perfil da ONG'),
                 _menuItem(1, Icons.visibility_outlined,
                     'Ver meu perfil público'),
               ],
@@ -1153,19 +1154,17 @@ class _PainelConteudoState extends State<_PainelConteudo> {
           for (final p in _pendencias) _cardPendencia(p),
           const SizedBox(height: AppSpacing.md),
         ],
-        // Separa o que precisa de acao (Ativos) do historico (Recusados/Concluidos).
-        SegmentedButton<int>(
-          showSelectedIcon: false,
-          segments: [
-            ButtonSegment(value: 0, label: Text('Ativos (${ativos.length})')),
-            ButtonSegment(
-                value: 1, label: Text('Recusados (${recusados.length})')),
-            ButtonSegment(
-                value: 2, label: Text('Concluídos (${concluidos.length})')),
+        // Separa o que precisa de acao (Ativos) do historico (Recusados/
+        // Concluidos). Wrap de chips: quebra linha em telas estreitas (sem
+        // overflow de pixels, ao contrario do SegmentedButton).
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _chipInteresse(0, 'Ativos', ativos.length),
+            _chipInteresse(1, 'Recusados', recusados.length),
+            _chipInteresse(2, 'Concluídos', concluidos.length),
           ],
-          selected: {_subInteresses},
-          onSelectionChanged: (s) =>
-              setState(() => _subInteresses = s.first),
         ),
         const SizedBox(height: AppSpacing.md),
         if (fonte.isEmpty)
@@ -1176,6 +1175,15 @@ class _PainelConteudoState extends State<_PainelConteudo> {
         else
           ..._interessesAgrupados(fonte),
       ],
+    );
+  }
+
+  // Chip de filtro das sub-abas de interesses (Ativos/Recusados/Concluídos).
+  Widget _chipInteresse(int valor, String rotulo, int n) {
+    return ChoiceChip(
+      label: Text('$rotulo ($n)'),
+      selected: _subInteresses == valor,
+      onSelected: (_) => setState(() => _subInteresses = valor),
     );
   }
 

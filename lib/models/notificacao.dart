@@ -26,4 +26,13 @@ class Notificacao {
       dataCriacao: json['dataCriacao'],
     );
   }
+
+  Notificacao copyWith({bool? lida}) => Notificacao(
+        id: id,
+        titulo: titulo,
+        mensagem: mensagem,
+        tipo: tipo,
+        lida: lida ?? this.lida,
+        dataCriacao: dataCriacao,
+      );
 }

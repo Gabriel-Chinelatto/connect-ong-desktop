@@ -63,6 +63,20 @@ class _NotificacoesScreenState extends State<NotificacoesScreen> {
     }
   }
 
+  // Clicar numa notificacao marca SO ela como lida (otimista + backend).
+  Future<void> _marcarUma(Notificacao n) async {
+    if (n.lida) return;
+    setState(() {
+      final idx = _itens.indexWhere((x) => x.id == n.id);
+      if (idx >= 0) _itens[idx] = _itens[idx].copyWith(lida: true);
+    });
+    try {
+      await _service.marcarLida(n.id);
+    } catch (_) {
+      // rede instavel: o estado local ja mudou; recarrega no proximo refresh.
+    }
+  }
+
   IconData _icone(String tipo) {
     switch (tipo) {
       case 'MENSAGEM':
@@ -129,6 +143,7 @@ class _NotificacoesScreenState extends State<NotificacoesScreen> {
                                 ? null
                                 : const Icon(Icons.circle,
                                     size: 10, color: AppColors.primary),
+                            onTap: n.lida ? null : () => _marcarUma(n),
                           ),
                         );
                       },
