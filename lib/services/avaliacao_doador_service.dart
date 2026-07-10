@@ -18,6 +18,7 @@ class AvaliacaoDoadorService {
     required int doadorId,
     required int nota,
     String? comentario,
+    List<String>? fotos,
   }) async {
     final response = await http.post(
       Uri.parse('${ApiService.baseUrl}/avaliacoes-doador'),
@@ -27,8 +28,10 @@ class AvaliacaoDoadorService {
         'nota': nota,
         if (comentario != null && comentario.trim().isNotEmpty)
           'comentario': comentario.trim(),
+        // fotos == null: não mexe nas fotos existentes (contrato do backend).
+        if (fotos != null) 'fotos': fotos,
       }),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(const Duration(seconds: 20));
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       String msg = 'Erro ao enviar a avaliação';

@@ -431,12 +431,47 @@ class _PerfilPublicoDoadorScreenState extends State<PerfilPublicoDoadorScreen> {
           ),
           if (a.comentario != null && a.comentario!.isNotEmpty)
             Text(a.comentario!),
+          if (a.fotos.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final b64 in a.fotos) _fotoAval(b64)],
+            ),
+          ],
           if (a.criadoEm != null)
             Text(_mesAno(a.criadoEm!),
                 style: TextStyle(
                     fontSize: 11,
                     color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
+      ),
+    );
+  }
+
+  // Miniatura de uma foto (base64) da doação; toca para ampliar.
+  Widget _fotoAval(String b64) {
+    final Uint8List bytes;
+    try {
+      bytes = base64Decode(b64);
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
+    return GestureDetector(
+      onTap: () => showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: const EdgeInsets.all(16),
+          child: InteractiveViewer(
+            child: Image.memory(bytes, fit: BoxFit.contain),
+          ),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.memory(bytes,
+            width: 72, height: 72, fit: BoxFit.cover, gaplessPlayback: true),
       ),
     );
   }

@@ -472,12 +472,48 @@ class _DialogAvaliarDoadorState extends State<DialogAvaliarDoador> {
   late final TextEditingController _comentario;
   bool _enviando = false;
 
+  // Fotos da doação recebida (base64 + bytes p/ preview). Ao editar, começa
+  // com as fotos já enviadas (decodificadas); o conjunto final é o que vai ao
+  // servidor. Máx 3 (o backend também valida).
+  final List<({String base64, Uint8List bytes})> _fotos = [];
+  static const int _maxFotos = 3;
+  bool _escolhendoFoto = false;
+
   @override
   void initState() {
     super.initState();
     _nota = widget.existente?.nota ?? 0;
     _comentario =
         TextEditingController(text: widget.existente?.comentario ?? '');
+    for (final b64 in widget.existente?.fotos ?? const <String>[]) {
+      try {
+        _fotos.add((base64: b64, bytes: base64Decode(b64)));
+      } catch (_) {
+        // base64 inválido: ignora em silêncio.
+      }
+    }
+  }
+
+  Future<void> _adicionarFoto() async {
+    if (_escolhendoFoto || _fotos.length >= _maxFotos) return;
+    _escolhendoFoto = true;
+    try {
+      final img = await escolherImagem();
+      if (img != null && mounted) {
+        setState(() => _fotos.add((base64: img.base64, bytes: img.bytes)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ApiService.mensagemAmigavel(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      _escolhendoFoto = false;
+    }
   }
 
   @override
@@ -503,6 +539,9 @@ class _DialogAvaliarDoadorState extends State<DialogAvaliarDoador> {
         doadorId: widget.doadorId,
         nota: _nota,
         comentario: _comentario.text,
+        // O conjunto atual de fotos SUBSTITUI o anterior (já inclui as que
+        // vieram ao editar). Sempre enviado (lista vazia limpa as fotos).
+        fotos: [for (final f in _fotos) f.base64],
       );
       if (!mounted) return;
       Navigator.pop(context, true);
@@ -537,7 +576,8 @@ class _DialogAvaliarDoadorState extends State<DialogAvaliarDoador> {
           : 'Avaliar ${widget.doadorNome}'),
       content: SizedBox(
         width: 400,
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
@@ -578,7 +618,83 @@ class _DialogAvaliarDoadorState extends State<DialogAvaliarDoador> {
                 hintText: 'Ex.: entrega combinada e pontual, doador atencioso',
               ),
             ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Fotos da doação (${_fotos.length}/$_maxFotos)',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Opcional — mostre o que recebeu. Aparece no perfil do doador.',
+                style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (int i = 0; i < _fotos.length; i++)
+                  Stack(
+                    children: [
+                      GestureDetector(
+                        onTap: () =>
+                            mostrarImagemGrande(context, _fotos[i].bytes),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.memory(_fotos[i].bytes,
+                              width: 72,
+                              height: 72,
+                              fit: BoxFit.cover,
+                              gaplessPlayback: true),
+                        ),
+                      ),
+                      Positioned(
+                        top: 2,
+                        right: 2,
+                        child: InkWell(
+                          onTap: _enviando
+                              ? null
+                              : () => setState(() => _fotos.removeAt(i)),
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.close,
+                                size: 14, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                if (_fotos.length < _maxFotos)
+                  Tooltip(
+                    message: 'Adicionar foto (JPG ou PNG)',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: _enviando ? null : _adicionarFoto,
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border:
+                              Border.all(color: cs.outlineVariant, width: 1.4),
+                        ),
+                        child: Icon(Icons.add_a_photo_outlined,
+                            color: cs.onSurfaceVariant),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ],
+          ),
         ),
       ),
       actions: [
