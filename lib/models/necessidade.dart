@@ -1,3 +1,5 @@
+import 'json_utils.dart';
+
 /// Uma necessidade publicada por uma ONG.
 class Necessidade {
   final int id;
@@ -22,14 +24,14 @@ class Necessidade {
 
   factory Necessidade.fromJson(Map<String, dynamic> json) {
     return Necessidade(
-      id: json['id'],
-      titulo: json['titulo'] ?? '',
-      descricao: json['descricao'] ?? '',
-      categoria: json['categoria'] ?? '',
-      urgente: json['urgente'] ?? false,
-      status: json['status'] ?? '',
-      ongId: json['ongId'],
-      ongNome: json['ongNome'],
+      id: asInt(json['id']),
+      titulo: asString(json['titulo']),
+      descricao: asString(json['descricao']),
+      categoria: asString(json['categoria']),
+      urgente: asBool(json['urgente']),
+      status: asString(json['status']),
+      ongId: asIntOrNull(json['ongId']),
+      ongNome: asStringOrNull(json['ongNome']),
     );
   }
 }
