@@ -192,7 +192,11 @@ class _SobreComIaDialogState extends State<_SobreComIaDialog> {
                 color: cs.onSurface),
           ),
           const SizedBox(height: 8),
-          Row(
+          // Wrap (não Row) para os botões quebrarem em telas estreitas em vez
+          // de estourar a largura do diálogo.
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               ElevatedButton.icon(
                 onPressed: _sugestao.isEmpty
@@ -201,11 +205,10 @@ class _SobreComIaDialogState extends State<_SobreComIaDialog> {
                 icon: const Icon(Icons.check),
                 label: const Text('Sim, usar este texto'),
               ),
-              const SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: () => setState(() => _pedindoAjuste = true),
                 icon: const Icon(Icons.tune),
-                label: const Text('Não, quero ajustar'),
+                label: const Text('Não, ajustar'),
               ),
             ],
           ),
@@ -229,14 +232,16 @@ class _SobreComIaDialogState extends State<_SobreComIaDialog> {
             onSubmitted: (_) => _reformular(),
           ),
           const SizedBox(height: 10),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               ElevatedButton.icon(
                 onPressed: _reformular,
                 icon: const Icon(Icons.auto_awesome),
                 label: const Text('Reformular'),
               ),
-              const SizedBox(width: 8),
               TextButton(
                 onPressed: () => setState(() => _pedindoAjuste = false),
                 child: const Text('Voltar'),

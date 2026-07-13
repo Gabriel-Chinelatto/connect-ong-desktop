@@ -28,9 +28,23 @@ class VersaoApp {
 /// Versões da mais recente (topo) para a mais antiga. A v1.7 é a atual.
 const List<VersaoApp> kVersoes = [
   VersaoApp(
+    versao: '1.9',
+    titulo: 'Frete inteligente e mais IA',
+    atual: true,
+    mudancas: [
+      'Escrever com IA no perfil: a partir de um rascunho, a IA sugere o texto '
+          '"Sobre" da ONG e você vai ajustando (mais curto, mencionar X...) até ficar do seu jeito',
+      'Escrever com IA nas necessidades: a IA transforma o rascunho em um pedido claro e convincente',
+      'Tudo ancorado nos dados reais da sua ONG — a IA não inventa informação',
+      'No app do doador: simulador de frete até a sua ONG (por distância e peso) e '
+          'resumo de impacto da ONG gerado por IA',
+      '"Sugestões para você" no início do doador: recomendações por perfil e cidade',
+      'Navegação mais fluida no app do doador',
+    ],
+  ),
+  VersaoApp(
     versao: '1.8',
     titulo: 'Revisão final de segurança',
-    atual: true,
     mudancas: [
       'Sessão protegida: se o acesso expirar, o app volta ao login automaticamente',
       'Privacidade real em toda a busca: telefone e e-mail da ONG só aparecem quando ela permite',
