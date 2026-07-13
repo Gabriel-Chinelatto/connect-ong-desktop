@@ -12,6 +12,7 @@ import '../../widgets/seletor_estado_cidade.dart';
 import '../../widgets/visualizador_imagem.dart';
 import '../../widgets/feedback/app_snackbar.dart';
 import '../../widgets/feedback/empty_state.dart';
+import 'sobre_com_ia_dialog.dart';
 
 /// Edicao do perfil PUBLICO da ONG: dados basicos + capa, endereco completo
 /// e fotos do local (ate 5). Tudo salvo via PUT /ongs/{id}.
@@ -246,6 +247,18 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
                         ),
                         _campo(_descricao, 'Descrição (o que a ONG faz)',
                             linhas: 3),
+                        // Escreve/refina o "Sobre" com IA (loop de ajuste),
+                        // ancorado nos dados reais desta ONG.
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed:
+                                _salvando ? null : _escreverSobreComIa,
+                            icon: const Icon(Icons.auto_awesome, size: 18),
+                            label: const Text('Escrever com IA'),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
                         _campo(_endereco,
                             'Endereço completo (rua, número, bairro)'),
                         const SizedBox(height: AppSpacing.sm),
@@ -271,6 +284,19 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
                   ),
                 ),
     );
+  }
+
+  // Abre o diálogo "Sobre com IA" e, se a ONG confirmar, adota o texto no campo
+  // de descrição (ainda precisa Salvar para persistir via PUT /ongs/{id}).
+  Future<void> _escreverSobreComIa() async {
+    final texto = await mostrarSobreComIa(
+      context,
+      ongId: widget.ongId,
+      rascunhoAtual: _descricao.text.trim(),
+    );
+    if (!mounted || texto == null || texto.isEmpty) return;
+    setState(() => _descricao.text = texto);
+    AppSnackbar.sucesso(context, 'Sobre atualizado. Não esqueça de Salvar.');
   }
 
   Widget _campo(TextEditingController c, String label, {int linhas = 1}) {
