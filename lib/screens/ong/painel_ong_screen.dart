@@ -28,6 +28,7 @@ import '../../widgets/common/dialog_pontuacao.dart';
 import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
 import 'configuracoes_screen.dart';
+import 'desenvolvimento_chat_screen.dart';
 import 'dialogs_match.dart';
 import 'editar_ong_screen.dart';
 import 'perfil_publico_ong_screen.dart';
@@ -794,11 +795,19 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                   case 2:
                     widget.onLogout();
                     break;
+                  case 3:
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                const DesenvolvimentoChatScreen()));
+                    break;
                 }
               },
               itemBuilder: (_) => [
                 _menuItem(0, Icons.settings_outlined, 'Configurações'),
                 _menuItem(1, Icons.info_outline, 'Sobre o projeto'),
+                _menuItem(3, Icons.code, 'Sobre o Desenvolvimento'),
                 _menuItem(2, Icons.logout, 'Sair'),
               ],
             ),
