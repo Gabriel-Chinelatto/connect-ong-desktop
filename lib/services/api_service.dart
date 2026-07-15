@@ -24,8 +24,17 @@ class ApiService {
     return erro.toString().replaceFirst('Exception: ', '');
   }
 
-  static const String baseUrl =
-      'http://localhost:8080';
+  // Endereco base da API (backend Spring Boot).
+  //
+  // PADRAO = API NA NUVEM (Render): o painel funciona em qualquer maquina, sem
+  // precisar rodar o backend localmente.
+  //
+  // Para desenvolver com o backend local (mais rapido, sem latencia):
+  //   flutter run -d windows --dart-define=API_BASE=http://localhost:8080
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE',
+    defaultValue: 'https://connect-ong-api.onrender.com',
+  );
 
   // Token JWT de acesso, mantido apenas em memoria (sem persistencia em disco).
   // O app desktop nao guarda sessao: o usuario faz login a cada abertura.
