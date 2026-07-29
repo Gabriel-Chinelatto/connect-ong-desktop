@@ -310,11 +310,18 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
     ]);
   }
 
-  // Abre o endereco no Google Maps. No desktop/web o launch pode falhar;
-  // o helper degrada copiando o link para a area de transferencia.
+  // Abre o endereco no Google Maps. Quando a ONG confirmou o local no mapa
+  // (latitude/longitude), abre na COORDENADA EXATA (mais preciso); senao cai no
+  // endereco em texto. No desktop/web o launch pode falhar; o helper degrada
+  // copiando o link para a area de transferencia.
   Future<void> _abrirNoMaps(String endereco) async {
+    final lat = _perfil?.latitude;
+    final lng = _perfil?.longitude;
+    final query = (lat != null && lng != null)
+        ? '$lat,$lng'
+        : Uri.encodeComponent(endereco);
     final url = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(endereco)}');
+        'https://www.google.com/maps/search/?api=1&query=$query');
     await abrirLinkExterno(context, url);
   }
 

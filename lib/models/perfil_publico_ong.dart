@@ -27,6 +27,10 @@ class PerfilPublicoOng {
   /// Endereco completo em texto (rua, numero, bairro).
   final String? endereco;
 
+  /// Coordenadas do endereco (null = sem coordenada; usa fallback por cidade).
+  final double? latitude;
+  final double? longitude;
+
   /// Fotos do local/sede (base64, ate 5).
   final List<String> fotosLocal;
 
@@ -58,6 +62,8 @@ class PerfilPublicoOng {
     required this.prestacoes,
     this.capaBase64,
     this.endereco,
+    this.latitude,
+    this.longitude,
     this.fotosLocal = const [],
     this.diasNoTopo,
     this.ultimoReinadoDias,
@@ -94,6 +100,8 @@ class PerfilPublicoOng {
       prestacoes: lista('prestacoes', PrestacaoResumo.fromJson),
       capaBase64: j['capaBase64'] as String?,
       endereco: j['endereco'] as String?,
+      latitude: (j['latitude'] as num?)?.toDouble(),
+      longitude: (j['longitude'] as num?)?.toDouble(),
       fotosLocal:
           ((j['fotosLocal'] as List?) ?? []).whereType<String>().toList(),
       diasNoTopo: (j['diasNoTopo'] as num?)?.toInt(),

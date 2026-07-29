@@ -4,10 +4,12 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../services/api_service.dart';
+import '../../services/geocoding_service.dart';
 import '../../services/ong_service.dart';
 import '../../theme/app_spacing.dart';
 import '../../utils/estado_cidade.dart';
 import '../../utils/imagens.dart';
+import '../../widgets/campo_endereco_autocomplete.dart';
 import '../../widgets/seletor_estado_cidade.dart';
 import '../../widgets/visualizador_imagem.dart';
 import '../../widgets/feedback/app_snackbar.dart';
@@ -32,12 +34,18 @@ class EditarOngScreen extends StatefulWidget {
 
 class _EditarOngScreenState extends State<EditarOngScreen> {
   final OngService _service = OngService();
+  final GeocodingService _geo = GeocodingService();
 
   final _nome = TextEditingController();
   final _telefone = TextEditingController();
   final _cidade = TextEditingController();
   final _descricao = TextEditingController();
   final _endereco = TextEditingController();
+
+  // Coordenadas do endereco escolhido no autocomplete de mapa (null = ainda
+  // nao confirmado no mapa). Chave para o pino exato no web e no Maps.
+  double? _lat;
+  double? _lng;
 
   String _email = '';
 
@@ -94,6 +102,8 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
         _uf = local.uf;
         _descricao.text = ong.descricao;
         _endereco.text = ong.endereco ?? '';
+        _lat = ong.latitude;
+        _lng = ong.longitude;
         _capaBase64 = ong.capaBase64 ?? '';
         _capaBytes = _decodificar(_capaBase64);
         _fotosBase64
@@ -186,6 +196,30 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
     }
     if (_salvando) return;
     setState(() => _salvando = true);
+
+    final endereco = _endereco.text.trim();
+    // VALIDAÇÃO: se a ONG digitou um endereço mas não escolheu no mapa (sem
+    // coordenada), tentamos resolver o texto no geocoder. Se achar, marcamos o
+    // local; se não achar, avisamos (mas deixamos salvar — o texto ainda vale).
+    if (endereco.isNotEmpty && (_lat == null || _lng == null)) {
+      try {
+        final r = await _geo.buscar(endereco);
+        if (r.isNotEmpty) {
+          _lat = r.first.lat;
+          _lng = r.first.lng;
+        }
+      } catch (_) {
+        // Sem internet/geocoder: segue salvando só o texto.
+      }
+      if (mounted && _lat == null && endereco.length >= 4) {
+        AppSnackbar.aviso(
+          context,
+          'Endereço não localizado no mapa — o pino pode ficar impreciso. '
+          'Dica: escolha uma sugestão da lista.',
+        );
+      }
+    }
+
     try {
       await _service.atualizar(
         id: widget.ongId,
@@ -195,7 +229,9 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
         cidade: formatarCidadeUf(_cidade.text, _uf),
         descricao: _descricao.text.trim(),
         // Endereco sempre vai (texto editavel direto); capa/fotos so se mexeu.
-        endereco: _endereco.text.trim(),
+        endereco: endereco,
+        latitude: _lat,
+        longitude: _lng,
         capaBase64: _capaAlterada ? _capaBase64 : null,
         fotosLocal: _fotosAlteradas ? List.of(_fotosBase64) : null,
       );
@@ -259,9 +295,17 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        _campo(_endereco,
-                            'Endereço completo (rua, número, bairro)'),
-                        const SizedBox(height: AppSpacing.sm),
+                        CampoEnderecoAutocomplete(
+                          controller: _endereco,
+                          enabled: !_salvando,
+                          latInicial: _lat,
+                          lngInicial: _lng,
+                          onCoordenadas: (lat, lng) {
+                            _lat = lat;
+                            _lng = lng;
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.md),
                         _secaoFotosLocal(),
                         const SizedBox(height: AppSpacing.lg),
                         SizedBox(

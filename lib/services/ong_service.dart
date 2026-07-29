@@ -87,6 +87,8 @@ class OngService {
     required String descricao,
     String? capaBase64,
     String? endereco,
+    double? latitude,
+    double? longitude,
     List<String>? fotosLocal,
   }) async {
     // Timeout maior: o corpo pode carregar capa + ate 5 fotos base64.
@@ -101,6 +103,10 @@ class OngService {
         'descricao': descricao,
         if (capaBase64 != null) 'capaBase64': capaBase64,
         if (endereco != null) 'endereco': endereco,
+        // Coordenadas so vao quando ambas presentes (endereco confirmado no
+        // mapa). O backend valida a faixa e so sobrescreve se validas.
+        if (latitude != null && longitude != null) 'latitude': latitude,
+        if (latitude != null && longitude != null) 'longitude': longitude,
         if (fotosLocal != null) 'fotosLocal': fotosLocal,
       }),
     ).timeout(const Duration(seconds: 30));

@@ -371,59 +371,76 @@ class _PainelConteudoState extends State<_PainelConteudo> {
       final nec = resultados[0] as List<Necessidade>;
       final ints = resultados[1] as List<Interesse>;
       final camps = resultados[2] as List<Campanha>;
-      // Feed global da plataforma — best-effort: se falhar, o painel
-      // continua funcionando com a timeline vazia.
-      List<Atividade> ativs = [];
-      try {
-        ativs = await _atividadeService.listarRecentes();
-      } catch (_) {
-        ativs = [];
-      }
-      // Selo "verificada" do cabecalho — tambem best-effort.
-      try {
-        final perfil = await PerfilPublicoService().buscar(widget.ong.id);
-        _verificada = perfil.verificada;
-      } catch (_) {}
-      // Pendencias de prestacao de contas — best-effort: sem elas o painel
-      // funciona normalmente (banner e secao simplesmente nao aparecem).
-      try {
-        _pendencias = await PrestacaoService().pendencias(widget.ong.id);
-      } catch (_) {
-        _pendencias = [];
-      }
-      // Minhas avaliacoes dos doadores com match CONCLUIDO — best-effort.
-      // O GET publico so traz ongNome (sem ongId), entao identifica a minha
-      // avaliacao comparando com o nome da ONG da sessao.
-      try {
-        final mapa = <int, AvaliacaoDoador>{};
-        final doadores = ints
-            .where((i) => i.status == 'CONCLUIDO' && i.doadorId != null)
-            .map((i) => i.doadorId!)
-            .toSet();
-        for (final doadorId in doadores) {
-          final avs =
-              await AvaliacaoDoadorService().listarPorDoador(doadorId);
-          for (final a in avs) {
-            if (a.ongNome != null && a.ongNome == widget.ong.nome) {
-              mapa[doadorId] = a;
-              break;
-            }
-          }
-        }
-        _minhasAvaliacoes = mapa;
-      } catch (_) {}
       if (!mounted) return;
+      // Mostra JA o essencial (o painel aparece imediatamente); os dados
+      // best-effort abaixo carregam em paralelo e preenchem em seguida.
       setState(() {
         _necessidades = nec;
         _interesses = ints;
         _campanhas = camps;
-        _atividades = ativs;
         _carregando = false;
       });
       // Base do polling em tempo real: a partir daqui, ids ainda nao vistos
       // sao considerados "novos interesses".
       _idsInteressesVistos = ints.map((i) => i.id).toSet();
       _interessesInicializados = true;
+
+      // Os 4 blocos best-effort agora rodam em PARALELO (antes eram awaits em
+      // serie, somando a latencia de cada um — principal causa da lentidao ao
+      // abrir o painel). Cada um trata o proprio erro e nao derruba os outros.
+      await Future.wait<void>([
+        // Feed global da plataforma.
+        () async {
+          try {
+            _atividades = await _atividadeService.listarRecentes();
+          } catch (_) {
+            _atividades = [];
+          }
+        }(),
+        // Selo "verificada" do cabecalho.
+        () async {
+          try {
+            final perfil = await PerfilPublicoService().buscar(widget.ong.id);
+            _verificada = perfil.verificada;
+          } catch (_) {}
+        }(),
+        // Pendencias de prestacao de contas.
+        () async {
+          try {
+            _pendencias = await PrestacaoService().pendencias(widget.ong.id);
+          } catch (_) {
+            _pendencias = [];
+          }
+        }(),
+        // Minhas avaliacoes dos doadores com match CONCLUIDO. O GET publico so
+        // traz ongNome (sem ongId), entao compara com o nome da ONG da sessao.
+        // As consultas por doador tambem vao em paralelo (antes era N+1 serie).
+        () async {
+          try {
+            final doadores = ints
+                .where((i) => i.status == 'CONCLUIDO' && i.doadorId != null)
+                .map((i) => i.doadorId!)
+                .toSet()
+                .toList();
+            final listas = await Future.wait(doadores
+                .map((d) => AvaliacaoDoadorService().listarPorDoador(d)));
+            final mapa = <int, AvaliacaoDoador>{};
+            for (var k = 0; k < doadores.length; k++) {
+              for (final a in listas[k]) {
+                if (a.ongNome != null && a.ongNome == widget.ong.nome) {
+                  mapa[doadores[k]] = a;
+                  break;
+                }
+              }
+            }
+            _minhasAvaliacoes = mapa;
+          } catch (_) {}
+        }(),
+      ]);
+      if (!mounted) return;
+      // Reflete os dados best-effort que chegaram (atividades, selo, pendencias,
+      // avaliacoes). O essencial ja foi mostrado acima.
+      setState(() {});
     } catch (e) {
       if (!mounted) return;
       setState(() => _carregando = false);
@@ -1946,27 +1963,33 @@ class _PainelConteudoState extends State<_PainelConteudo> {
               fontSize: 12,
               color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(_formatarReal(d.valor),
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: _verde)),
-            const SizedBox(height: 2),
-            Text(
-              confirmada ? 'Confirmada' : d.status,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: confirmada
-                    ? AppColors.success
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
+        // FittedBox garante que a coluna (valor + status) caiba na altura que o
+        // ListTile reserva ao trailing, sem o "BOTTOM OVERFLOWED BY 1 PIXEL".
+        trailing: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(_formatarReal(d.valor),
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _verde)),
+              const SizedBox(height: 2),
+              Text(
+                confirmada ? 'Confirmada' : d.status,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: confirmada
+                      ? AppColors.success
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

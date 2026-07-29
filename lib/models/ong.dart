@@ -16,6 +16,11 @@ class Ong {
   /// Endereco completo em texto (rua, numero, bairro).
   final String? endereco;
 
+  /// Coordenadas do endereco (quando a ONG escolheu no autocomplete de mapa).
+  /// Null = sem coordenada; o front cai no fallback por cidade.
+  final double? latitude;
+  final double? longitude;
+
   /// Fotos do local/sede (base64, ate 5).
   final List<String> fotosLocal;
 
@@ -28,6 +33,8 @@ class Ong {
     this.descricao = '',
     this.capaBase64,
     this.endereco,
+    this.latitude,
+    this.longitude,
     this.fotosLocal = const [],
   });
 
@@ -41,6 +48,8 @@ class Ong {
       descricao: json['descricao'] ?? '',
       capaBase64: json['capaBase64'],
       endereco: json['endereco'],
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
       fotosLocal: ((json['fotosLocal'] as List?) ?? [])
           .whereType<String>()
           .toList(),
