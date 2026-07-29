@@ -1847,10 +1847,17 @@ class _PainelConteudoState extends State<_PainelConteudo> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
+                // Expanded + ellipsis: valores grandes (metas altas) não
+                // empurram a porcentagem para fora do card.
+                Expanded(
+                  child: Text(
                     'R\$ ${c.valorArrecadado.toStringAsFixed(0)} de '
                     'R\$ ${c.metaValor.toStringAsFixed(0)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 8),
                 Text('${c.progresso}%',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, color: _verde)),

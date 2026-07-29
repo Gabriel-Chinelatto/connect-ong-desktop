@@ -513,12 +513,14 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
               size: n.urgente ? 18 : 8,
               color: n.urgente ? AppColors.error : AppColors.primary),
           const SizedBox(width: 10),
-          Expanded(child: Text(n.titulo)),
-          if (n.categoria.isNotEmpty)
+          Expanded(child: Text(n.titulo, overflow: TextOverflow.ellipsis)),
+          if (n.categoria.isNotEmpty) ...[
+            const SizedBox(width: 8),
             Text(n.categoria,
                 style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          ],
         ],
       ),
     );
@@ -532,8 +534,14 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
         children: [
           Row(
             children: [
-              Text(a.doadorNome,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              // Flexible + ellipsis: nome de doador comprido não empurra as
+              // estrelas para fora (evita RenderFlex RIGHT overflow).
+              Flexible(
+                child: Text(a.doadorNome,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+              ),
               const SizedBox(width: 8),
               for (int i = 0; i < 5; i++)
                 Icon(i < a.nota ? Icons.star : Icons.star_border,

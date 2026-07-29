@@ -315,8 +315,13 @@ class _PerfilPublicoDoadorScreenState extends State<PerfilPublicoDoadorScreen> {
                         Icon(Icons.place_outlined,
                             size: 16, color: cs.onSurfaceVariant),
                         const SizedBox(width: 4),
-                        Text(localizacao,
-                            style: TextStyle(color: cs.onSurfaceVariant)),
+                        // Flexible + ellipsis: cidade com nome longo não estoura.
+                        Flexible(
+                          child: Text(localizacao,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: cs.onSurfaceVariant)),
+                        ),
                       ],
                     ),
                   ],
