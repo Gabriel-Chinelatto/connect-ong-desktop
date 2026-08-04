@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import '../models/mensagem.dart';
 import 'api_service.dart';
@@ -14,11 +13,11 @@ import 'api_service.dart';
 class MensagemService {
   // Lista as mensagens de um match (ordenadas por data).
   Future<List<Mensagem>> listar(int interesseId) async {
-    // Timeout de 10s para nao travar a UI se o servidor nao responder.
-    final response = await http.get(
+    // Timeout adaptativo (ApiService.timeout) para nao travar a UI.
+    final response = await ApiService.rede.get(
       Uri.parse('${ApiService.baseUrl}/mensagens?interesseId=$interesseId'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar mensagens');
@@ -36,7 +35,7 @@ class MensagemService {
     required String conteudo,
     String? anexoBase64,
   }) async {
-    final response = await http.post(
+    final response = await ApiService.rede.post(
       Uri.parse('${ApiService.baseUrl}/mensagens'),
       headers: ApiService.jsonHeaders(),
       body: jsonEncode({
@@ -61,10 +60,10 @@ class MensagemService {
   Future<Map<String, dynamic>> status(int interesseId) async {
     const seguro = {'online': false, 'ultimoVisto': null, 'digitando': false};
     try {
-      final response = await http.get(
+      final response = await ApiService.rede.get(
         Uri.parse('${ApiService.baseUrl}/mensagens/status?interesseId=$interesseId'),
         headers: ApiService.authHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiService.timeout);
 
       if (response.statusCode != 200) return seguro;
       return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
@@ -76,11 +75,11 @@ class MensagemService {
   // Alterna/troca a reacao (emoji) do usuario atual numa mensagem (toggle).
   // `emojiCode` e um CODIGO (ex.: LIKE, LOVE), nao o caractere.
   Future<void> reagir(int mensagemId, String emojiCode) async {
-    final response = await http.post(
+    final response = await ApiService.rede.post(
       Uri.parse('${ApiService.baseUrl}/mensagens/$mensagemId/reacao'),
       headers: ApiService.jsonHeaders(),
       body: jsonEncode({'emoji': emojiCode}),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       String msg = 'Erro ao reagir';
@@ -97,10 +96,10 @@ class MensagemService {
   // Sinaliza que estou digitando neste match. Best-effort: ignora erros.
   Future<void> digitando(int interesseId) async {
     try {
-      await http.post(
+      await ApiService.rede.post(
         Uri.parse('${ApiService.baseUrl}/mensagens/digitando?interesseId=$interesseId'),
         headers: ApiService.jsonHeaders(),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(ApiService.timeout);
     } catch (_) {
       // Ignora: sinal de digitacao e best-effort.
     }

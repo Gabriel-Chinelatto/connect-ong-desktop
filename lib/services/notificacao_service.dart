@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import '../models/notificacao.dart';
 import 'api_service.dart';
@@ -12,11 +11,11 @@ import 'api_service.dart';
 /// marca todas como lidas. Sempre filtradas pelo usuario autenticado.
 class NotificacaoService {
   Future<List<Notificacao>> listar(int usuarioId) async {
-    // Timeout de 10s para nao travar a UI se o servidor nao responder.
-    final response = await http.get(
+    // Timeout adaptativo (ApiService.timeout) para nao travar a UI.
+    final response = await ApiService.rede.get(
       Uri.parse('${ApiService.baseUrl}/notificacoes?usuarioId=$usuarioId'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar notificações');
     }
@@ -25,22 +24,22 @@ class NotificacaoService {
   }
 
   Future<int> contarNaoLidas(int usuarioId) async {
-    final response = await http.get(
+    final response = await ApiService.rede.get(
       Uri.parse(
           '${ApiService.baseUrl}/notificacoes/nao-lidas?usuarioId=$usuarioId'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
     if (response.statusCode != 200) return 0;
     final body = jsonDecode(utf8.decode(response.bodyBytes));
     return (body['naoLidas'] ?? 0) as int;
   }
 
   Future<void> marcarTodas(int usuarioId) async {
-    final response = await http.put(
+    final response = await ApiService.rede.put(
       Uri.parse(
           '${ApiService.baseUrl}/notificacoes/marcar-todas?usuarioId=$usuarioId'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
     // Antes o status era ignorado: um 500 passava como sucesso e as notificacoes
     // continuavam nao-lidas apos recarregar, sem avisar o usuario.
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -51,9 +50,9 @@ class NotificacaoService {
   // Marca UMA notificação como lida (PUT /notificacoes/{id}/lida). O backend
   // confere o dono pelo token.
   Future<void> marcarLida(int id) async {
-    await http.put(
+    await ApiService.rede.put(
       Uri.parse('${ApiService.baseUrl}/notificacoes/$id/lida'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
   }
 }

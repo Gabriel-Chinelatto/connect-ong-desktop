@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import '../models/prestacao.dart';
 import 'api_service.dart';
@@ -23,7 +22,7 @@ class PrestacaoService {
     double? valorUtilizado,
   }) async {
     // Timeout maior que o padrao: o corpo pode carregar ate 5 fotos base64.
-    final response = await http.post(
+    final response = await ApiService.rede.post(
       Uri.parse('${ApiService.baseUrl}/prestacoes'),
       headers: ApiService.jsonHeaders(),
       body: jsonEncode({
@@ -33,7 +32,7 @@ class PrestacaoService {
         if (fotos.isNotEmpty) 'fotos': fotos,
         if (valorUtilizado != null) 'valorUtilizado': valorUtilizado,
       }),
-    ).timeout(const Duration(seconds: 30));
+    ).timeout(ApiService.timeoutPesado);
     if (response.statusCode != 200 && response.statusCode != 201) {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
       throw Exception(body['erro'] ?? 'Erro ao publicar prestação de contas');
@@ -42,10 +41,10 @@ class PrestacaoService {
 
   // Lista as prestacoes de contas de um match (mais recentes primeiro).
   Future<List<Prestacao>> listarPorInteresse(int interesseId) async {
-    final response = await http.get(
+    final response = await ApiService.rede.get(
       Uri.parse('${ApiService.baseUrl}/prestacoes?interesseId=$interesseId'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar as prestações de contas');
@@ -60,10 +59,10 @@ class PrestacaoService {
   // So a propria ONG pode consultar (escopo do JWT). Pendencia `definitivo`
   // (prazo de 10 dias estourado) desconta 5 pontos do score de transparencia.
   Future<List<PendenciaPrestacao>> pendencias(int ongId) async {
-    final response = await http.get(
+    final response = await ApiService.rede.get(
       Uri.parse('${ApiService.baseUrl}/prestacoes/pendencias?ongId=$ongId'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar as pendências de prestação');

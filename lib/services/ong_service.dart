@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import '../models/ong.dart';
 import 'api_service.dart';
@@ -13,11 +12,11 @@ import 'api_service.dart';
 class OngService {
   // Lista todas as ONGs (usado no seletor "qual ONG voce gerencia").
   Future<List<Ong>> listarTodas() async {
-    // Timeout de 10s para nao travar a UI se o servidor nao responder.
-    final response = await http.get(
+    // Timeout adaptativo (ApiService.timeout) para nao travar a UI.
+    final response = await ApiService.rede.get(
       Uri.parse('${ApiService.baseUrl}/ongs'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar ONGs');
@@ -37,7 +36,7 @@ class OngService {
     required String senha,
     String cnpj = '',
   }) async {
-    final response = await http.post(
+    final response = await ApiService.rede.post(
       Uri.parse('${ApiService.baseUrl}/ongs/registro'),
       headers: ApiService.jsonHeaders(),
       body: jsonEncode({
@@ -49,7 +48,7 @@ class OngService {
         'cnpj': cnpj,
         'senha': senha,
       }),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
@@ -60,10 +59,10 @@ class OngService {
   // Busca o perfil completo de uma ONG (GET /ongs/{id}), incluindo os
   // campos ricos: capaBase64, endereco e fotosLocal.
   Future<Ong> buscarPorId(int id) async {
-    final response = await http.get(
+    final response = await ApiService.rede.get(
       Uri.parse('${ApiService.baseUrl}/ongs/$id'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 15));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar os dados da ONG');
@@ -92,7 +91,7 @@ class OngService {
     List<String>? fotosLocal,
   }) async {
     // Timeout maior: o corpo pode carregar capa + ate 5 fotos base64.
-    final response = await http.put(
+    final response = await ApiService.rede.put(
       Uri.parse('${ApiService.baseUrl}/ongs/$id'),
       headers: ApiService.jsonHeaders(),
       body: jsonEncode({
@@ -109,7 +108,7 @@ class OngService {
         if (latitude != null && longitude != null) 'longitude': longitude,
         if (fotosLocal != null) 'fotosLocal': fotosLocal,
       }),
-    ).timeout(const Duration(seconds: 30));
+    ).timeout(ApiService.timeoutPesado);
 
     if (response.statusCode != 200) {
       String msg = 'Erro ao salvar o perfil da ONG';

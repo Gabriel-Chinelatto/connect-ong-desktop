@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import '../models/necessidade.dart';
 import 'api_service.dart';
@@ -10,7 +9,7 @@ import 'api_service.dart';
 ///
 /// A ONG cria pedidos (alimentos, roupas, etc.) que os doadores veem no app
 /// mobile; aqui ela publica novas necessidades e lista as proprias. As
-/// requisicoes seguem autenticadas via [ApiService] e com timeout de 10s.
+/// requisicoes seguem autenticadas via [ApiService] e com timeout adaptativo.
 class NecessidadeService {
   // ONG publica uma nova necessidade.
   Future<void> criar({
@@ -20,8 +19,8 @@ class NecessidadeService {
     required bool urgente,
     required int ongId,
   }) async {
-    // Timeout de 10s para nao travar a UI se o servidor nao responder.
-    final response = await http.post(
+    // Timeout adaptativo (ApiService.timeout) para nao travar a UI.
+    final response = await ApiService.rede.post(
       Uri.parse('${ApiService.baseUrl}/necessidades'),
       headers: ApiService.jsonHeaders(),
       body: jsonEncode({
@@ -31,7 +30,7 @@ class NecessidadeService {
         'urgente': urgente,
         'ongId': ongId,
       }),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       final body = jsonDecode(utf8.decode(response.bodyBytes));
@@ -50,7 +49,7 @@ class NecessidadeService {
     required String categoria,
     required bool urgente,
   }) async {
-    final response = await http.put(
+    final response = await ApiService.rede.put(
       Uri.parse('${ApiService.baseUrl}/necessidades/$id'),
       headers: ApiService.jsonHeaders(),
       body: jsonEncode({
@@ -59,7 +58,7 @@ class NecessidadeService {
         'categoria': categoria,
         'urgente': urgente,
       }),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode == 200 || response.statusCode == 201) return;
     if (response.statusCode == 404 || response.statusCode == 405) {
@@ -77,10 +76,10 @@ class NecessidadeService {
   // ONG exclui uma necessidade (so a dona; validado pelo JWT).
   // Contrato: DELETE /necessidades/{id}. Degrada como o editar acima.
   Future<void> excluir(int id) async {
-    final response = await http.delete(
+    final response = await ApiService.rede.delete(
       Uri.parse('${ApiService.baseUrl}/necessidades/$id'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode >= 200 && response.statusCode < 300) return;
     if (response.statusCode == 404 || response.statusCode == 405) {
@@ -97,10 +96,10 @@ class NecessidadeService {
 
   // Lista as necessidades publicadas por uma ONG.
   Future<List<Necessidade>> listarPorOng(int ongId) async {
-    final response = await http.get(
+    final response = await ApiService.rede.get(
       Uri.parse('${ApiService.baseUrl}/necessidades?ongId=$ongId'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar necessidades');

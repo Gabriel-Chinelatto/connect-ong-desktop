@@ -19,10 +19,10 @@ class BloqueioService {
   /// Lista os doadores bloqueados pela ONG logada.
   /// Backend antigo (404) degrada para lista vazia.
   Future<List<Bloqueio>> listar() async {
-    final response = await http.get(
+    final response = await ApiService.rede.get(
       Uri.parse('${ApiService.baseUrl}/bloqueios'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode == 404) return const [];
     if (response.statusCode != 200) {
@@ -39,11 +39,11 @@ class BloqueioService {
 
   /// Bloqueia um doador (idempotente no backend).
   Future<void> bloquear(int doadorId) async {
-    final response = await http.post(
+    final response = await ApiService.rede.post(
       Uri.parse('${ApiService.baseUrl}/bloqueios'),
       headers: ApiService.jsonHeaders(),
       body: jsonEncode({'doadorId': doadorId}),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw Exception(_erroDoCorpo(response, 'Erro ao bloquear o doador'));
@@ -52,10 +52,10 @@ class BloqueioService {
 
   /// Remove o bloqueio de um doador.
   Future<void> desbloquear(int doadorId) async {
-    final response = await http.delete(
+    final response = await ApiService.rede.delete(
       Uri.parse('${ApiService.baseUrl}/bloqueios/$doadorId'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200 && response.statusCode != 204) {
       throw Exception(_erroDoCorpo(response, 'Erro ao desbloquear o doador'));

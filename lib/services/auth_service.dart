@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
 
@@ -22,9 +21,9 @@ class AuthService {
     String email,
     String senha,
   ) async {
-    // Timeout de 10s; TimeoutException/SocketException/ClientException sao
+    // Timeout adaptativo; TimeoutException/SocketException/ClientException sao
     // propagados para a tela tratar como falha de conexao (nao "login invalido").
-    final response = await http
+    final response = await ApiService.rede
         .post(
           Uri.parse('${ApiService.baseUrl}/usuarios/login'),
           headers: {'Content-Type': 'application/json'},
@@ -33,7 +32,7 @@ class AuthService {
             'senha': senha,
           }),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(ApiService.timeout);
 
     if (response.statusCode == 200) {
       final dados =
@@ -60,13 +59,13 @@ class AuthService {
     String email,
     String codigo,
   ) async {
-    final response = await http
+    final response = await ApiService.rede
         .post(
           Uri.parse('${ApiService.baseUrl}/auth/login-2fa'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'email': email, 'codigo': codigo}),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(ApiService.timeout);
 
     if (response.statusCode == 200) {
       final dados =

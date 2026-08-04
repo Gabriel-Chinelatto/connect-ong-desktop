@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import '../models/perfil_publico_doador.dart';
 import 'api_service.dart';
@@ -20,7 +19,7 @@ class AvaliacaoDoadorService {
     String? comentario,
     List<String>? fotos,
   }) async {
-    final response = await http.post(
+    final response = await ApiService.rede.post(
       Uri.parse('${ApiService.baseUrl}/avaliacoes-doador'),
       headers: ApiService.jsonHeaders(),
       body: jsonEncode({
@@ -31,7 +30,7 @@ class AvaliacaoDoadorService {
         // fotos == null: não mexe nas fotos existentes (contrato do backend).
         if (fotos != null) 'fotos': fotos,
       }),
-    ).timeout(const Duration(seconds: 20));
+    ).timeout(ApiService.timeoutPesado);
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       String msg = 'Erro ao enviar a avaliação';
@@ -49,10 +48,10 @@ class AvaliacaoDoadorService {
   // Cada item traz ongNome/nota/comentario/criadoEm (sem ongId — para saber
   // se "eu ja avaliei", compare o ongNome com o nome da ONG da sessao).
   Future<List<AvaliacaoDoador>> listarPorDoador(int doadorId) async {
-    final response = await http.get(
+    final response = await ApiService.rede.get(
       Uri.parse('${ApiService.baseUrl}/avaliacoes-doador?doadorId=$doadorId'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar as avaliações do doador');

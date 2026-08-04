@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import '../models/preferencia.dart';
 import 'api_service.dart';
@@ -13,11 +12,11 @@ import 'api_service.dart';
 /// alto contraste, notificacoes). Le e salva sempre o usuario autenticado.
 class PreferenciaService {
   Future<Preferencia> obter(int usuarioId) async {
-    // Timeout de 10s para nao travar a UI se o servidor nao responder.
-    final response = await http.get(
+    // Timeout adaptativo (ApiService.timeout) para nao travar a UI.
+    final response = await ApiService.rede.get(
       Uri.parse('${ApiService.baseUrl}/usuarios/$usuarioId/preferencias'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar preferências');
     }
@@ -25,11 +24,11 @@ class PreferenciaService {
   }
 
   Future<void> salvar(int usuarioId, Preferencia prefs) async {
-    final response = await http.put(
+    final response = await ApiService.rede.put(
       Uri.parse('${ApiService.baseUrl}/usuarios/$usuarioId/preferencias'),
       headers: ApiService.jsonHeaders(),
       body: jsonEncode(prefs.toJson()),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
     if (response.statusCode != 200) {
       throw Exception('Erro ao salvar preferências');
     }

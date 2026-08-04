@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import '../models/interesse.dart';
 import 'api_service.dart';
@@ -14,11 +13,11 @@ import 'api_service.dart';
 class InteresseService {
   // Lista os interesses recebidos nas necessidades de uma ONG.
   Future<List<Interesse>> listarPorOng(int ongId) async {
-    // Timeout de 10s para nao travar a UI se o servidor nao responder.
-    final response = await http.get(
+    // Timeout adaptativo (ApiService.timeout) para nao travar a UI.
+    final response = await ApiService.rede.get(
       Uri.parse('${ApiService.baseUrl}/interesses?ongId=$ongId'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200) {
       throw Exception('Erro ao carregar interesses');
@@ -45,10 +44,10 @@ class InteresseService {
   }
 
   Future<void> _mudarStatus(int interesseId, String acao) async {
-    final response = await http.put(
+    final response = await ApiService.rede.put(
       Uri.parse('${ApiService.baseUrl}/interesses/$interesseId/$acao'),
       headers: ApiService.authHeaders(),
-    ).timeout(const Duration(seconds: 10));
+    ).timeout(ApiService.timeout);
 
     if (response.statusCode != 200) {
       String msg = 'Erro ao atualizar o interesse';

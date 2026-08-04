@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+
 /// Uma sugestão de endereço real vinda do geocoder (OpenStreetMap/Nominatim).
 class EnderecoSugestao {
   /// Endereço conciso para preencher o campo (cabe em 255 chars).
@@ -51,6 +52,9 @@ class GeocodingService {
       'accept-language': 'pt-BR',
     });
 
+    // Nominatim (OpenStreetMap) e um servico DE TERCEIROS: nao usa o timeout
+    // adaptativo da nossa API (que espera o Render acordar) nem o cliente que
+    // repete — o Nominatim limita requisicoes e repetir levaria a bloqueio.
     final resp = await http
         .get(uri, headers: {'User-Agent': _userAgent})
         .timeout(const Duration(seconds: 8));

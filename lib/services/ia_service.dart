@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
 
@@ -55,7 +54,7 @@ class IaService {
     String? categoria,
   }) async {
     try {
-      final resp = await http
+      final resp = await ApiService.rede
           .post(
             Uri.parse('${ApiService.baseUrl}/ia/redacao'),
             headers: ApiService.jsonHeaders(),
@@ -66,7 +65,7 @@ class IaService {
                 'categoria': categoria,
             }),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(ApiService.timeoutPesado);
       if (resp.statusCode < 200 || resp.statusCode >= 300) {
         throw Exception('Não foi possível redigir com IA agora.');
       }
@@ -89,7 +88,7 @@ class IaService {
     String? ajuste,
   }) async {
     try {
-      final resp = await http
+      final resp = await ApiService.rede
           .post(
             Uri.parse('${ApiService.baseUrl}/ia/sobre-ong'),
             headers: ApiService.jsonHeaders(),
@@ -99,7 +98,7 @@ class IaService {
               if (ajuste != null && ajuste.isNotEmpty) 'ajuste': ajuste,
             }),
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(ApiService.timeoutPesado);
       if (resp.statusCode < 200 || resp.statusCode >= 300) {
         throw Exception('Não foi possível gerar o texto agora.');
       }

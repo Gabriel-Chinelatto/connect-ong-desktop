@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import '../models/doacao_financeira.dart';
 import 'api_service.dart';
@@ -14,12 +13,12 @@ import 'api_service.dart';
 class DoacaoFinanceiraService {
   /// Lista as doacoes PIX recebidas pela ONG [ongId], mais recentes primeiro.
   Future<List<DoacaoFinanceira>> listarPorOng(int ongId) async {
-    final response = await http
+    final response = await ApiService.rede
         .get(
           Uri.parse('${ApiService.baseUrl}/doacoes-financeiras?ongId=$ongId'),
           headers: ApiService.authHeaders(),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(ApiService.timeout);
 
     if (response.statusCode != 200) {
       throw Exception(

@@ -21,7 +21,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 import 'screens/auth/cadastro_ong_screen.dart';
 import 'screens/ong/chat_ong_screen.dart';
@@ -39,7 +38,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Login real da ONG demo -> grava o token como o app faria.
-  final resp = await http.post(
+  final resp = await ApiService.rede.post(
     Uri.parse('${ApiService.baseUrl}/usuarios/login'),
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode({

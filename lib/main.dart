@@ -12,6 +12,10 @@ void main() async {
   // Carrega preferencias locais do dispositivo (ex.: flag do Modo Feira), que a
   // tela de login precisa conhecer antes de qualquer autenticacao.
   await ConfigController.instance.carregarLocal();
+  // Acorda o servidor o quanto antes (o plano gratuito do Render hiberna apos
+  // ~15 min parado). Nao e aguardado: so adianta o trabalho enquanto a tela de
+  // login ja aparece.
+  ApiService.acordarServidor();
   runApp(const ConnectONGApp());
 }
 

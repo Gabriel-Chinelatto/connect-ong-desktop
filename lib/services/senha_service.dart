@@ -27,7 +27,7 @@ class SenhaService {
 
   /// Pede o envio do codigo de recuperacao para [email].
   Future<EsqueciSenhaResultado> solicitarCodigo(String email) async {
-    final response = await http
+    final response = await ApiService.rede
         .post(
           Uri.parse('${ApiService.baseUrl}/auth/esqueci-senha'),
           headers: {'Content-Type': 'application/json'},
@@ -53,7 +53,7 @@ class SenhaService {
     required String codigo,
     required String novaSenha,
   }) async {
-    final response = await http
+    final response = await ApiService.rede
         .post(
           Uri.parse('${ApiService.baseUrl}/auth/redefinir-senha'),
           headers: {'Content-Type': 'application/json'},

@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 
 import 'api_service.dart';
 
@@ -30,7 +29,7 @@ class AssistenteDevService {
     List<Map<String, String>> historico = const [],
   }) async {
     try {
-      final resp = await http
+      final resp = await ApiService.rede
           .post(
             Uri.parse('${ApiService.baseUrl}/assistente-dev'),
             headers: ApiService.jsonHeaders(),
@@ -39,7 +38,7 @@ class AssistenteDevService {
               'historico': historico,
             }),
           )
-          .timeout(const Duration(seconds: 25));
+          .timeout(ApiService.timeoutPesado);
       if (resp.statusCode < 200 || resp.statusCode >= 300) {
         throw Exception('O assistente esta indisponivel no momento.');
       }
