@@ -1,11 +1,11 @@
 {
-    "name": "connect_ong",
-    "short_name": "connect_ong",
+    "name": "Connect ONG — Painel da ONG",
+    "short_name": "Connect ONG",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Painel de gestão da ONG.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
