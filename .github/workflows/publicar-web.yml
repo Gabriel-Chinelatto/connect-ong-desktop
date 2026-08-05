@@ -54,10 +54,16 @@ jobs:
       # 05/08/2026): o card de credenciais no login e o que permite o visitante
       # do estande entrar sozinho. Contrapartida conhecida: quem abrir o link
       # enxerga um login valido de ONG e pode alterar os dados da demonstracao.
+      # --pwa-strategy=none: NAO instala service worker.
+      # Por padrao o Flutter guarda o app inteiro no navegador e continua
+      # servindo a VERSAO ANTIGA depois de uma publicacao. O painel precisa de
+      # internet de qualquer forma (fala com a API), entao o cache offline nao
+      # compensa o risco de ficar preso numa versao velha.
       - name: Compilar versao web
         run: |
           flutter build web --release \
-            --base-href /connect-ong-desktop/
+            --base-href /connect-ong-desktop/ \
+            --pwa-strategy=none
 
       - name: Tratar rotas profundas (404 -> index)
         run: cp build/web/index.html build/web/404.html
