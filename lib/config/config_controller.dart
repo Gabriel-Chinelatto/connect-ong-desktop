@@ -26,8 +26,17 @@ class ConfigController extends ChangeNotifier {
   // A flag "Modo Feira" e um estado LOCAL do dispositivo (nao do usuario): ela
   // controla se a tela de login exibe as credenciais de demonstracao, e por isso
   // precisa existir ANTES de qualquer login. Fica em SharedPreferences (e nao no
-  // backend por usuario, como as demais preferencias). Padrao ligado (true).
-  bool _modoFeira = true;
+  // backend por usuario, como as demais preferencias).
+  //
+  // O PADRAO vem do build: ligado para quem roda o painel (feira/dev) e
+  // DESLIGADO na versao publicada na internet, compilada com
+  // `--dart-define=MODO_FEIRA_PADRAO=false`. Sem isso, qualquer pessoa que
+  // abrisse o link publico veria e-mail e senha validos de uma conta de ONG na
+  // tela de login. Quem apresenta pode religar nas Configuracoes.
+  static const bool _modoFeiraPadrao =
+      bool.fromEnvironment('MODO_FEIRA_PADRAO', defaultValue: true);
+
+  bool _modoFeira = _modoFeiraPadrao;
 
   Preferencia get prefs => _prefs;
   int? get usuarioId => _usuarioId;
@@ -56,7 +65,7 @@ class ConfigController extends ChangeNotifier {
   Future<void> carregarLocal() async {
     try {
       final sp = await SharedPreferences.getInstance();
-      _modoFeira = sp.getBool(_kModoFeira) ?? true;
+      _modoFeira = sp.getBool(_kModoFeira) ?? _modoFeiraPadrao;
       notifyListeners();
     } catch (_) {}
   }

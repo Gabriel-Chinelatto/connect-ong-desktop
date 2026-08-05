@@ -1,0 +1,80 @@
+name: Publicar painel da ONG (web)
+
+# Publica o PAINEL DA ONG como site estatico no GitHub Pages, para abrir em
+# QUALQUER maquina (ex.: o PC da escola) sem instalar Flutter nem clonar nada.
+#
+# Endereco final: https://gabriel-chinelatto.github.io/connect-ong-desktop/
+#
+# Detalhes que importam:
+# - `--base-href /connect-ong-desktop/`: o Pages serve o site numa SUBPASTA com
+#   o nome do repositorio. Sem isso o app carrega em branco.
+# - `MODO_FEIRA_PADRAO=false`: a versao publica NAO exibe as credenciais de
+#   demonstracao na tela de login — este painel administra ONGs, entao anunciar
+#   um login valido na internet aberta permitiria qualquer pessoa alterar os
+#   dados da demonstracao. Quem apresenta liga nas Configuracoes.
+# - A API usada e a padrao (Render). Esse endereco precisa estar liberado no
+#   CORS do backend (ver SecurityConfig.allowedOrigins).
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Baixar dependencias
+        run: flutter pub get
+
+      - name: Conferir analise estatica
+        run: flutter analyze
+
+      - name: Rodar testes
+        run: flutter test
+
+      - name: Compilar versao web
+        run: |
+          flutter build web --release \
+            --base-href /connect-ong-desktop/ \
+            --dart-define=MODO_FEIRA_PADRAO=false
+
+      - name: Tratar rotas profundas (404 -> index)
+        run: cp build/web/index.html build/web/404.html
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Enviar artefato
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
