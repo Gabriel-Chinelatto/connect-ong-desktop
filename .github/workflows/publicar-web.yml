@@ -62,6 +62,10 @@ jobs:
 
       - name: Configurar Pages
         uses: actions/configure-pages@v5
+        with:
+          # Liga o GitHub Pages do repositorio na primeira execucao (sem isto
+          # seria preciso habilitar na mao em Settings > Pages).
+          enablement: true
 
       - name: Enviar artefato
         uses: actions/upload-pages-artifact@v3
