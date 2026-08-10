@@ -21,6 +21,11 @@ class CampoEnderecoAutocomplete extends StatefulWidget {
   final double? lngInicial;
   final void Function(double? lat, double? lng) onCoordenadas;
 
+  /// Cidade e UF já escolhidas no formulário. Ancoram a busca na localidade da
+  /// ONG (digitar "cotil" procura em Limeira/SP, e não no Brasil inteiro).
+  final String? cidade;
+  final String? uf;
+
   const CampoEnderecoAutocomplete({
     super.key,
     required this.controller,
@@ -28,6 +33,8 @@ class CampoEnderecoAutocomplete extends StatefulWidget {
     this.enabled = true,
     this.latInicial,
     this.lngInicial,
+    this.cidade,
+    this.uf,
   });
 
   @override
@@ -86,7 +93,8 @@ class _CampoEnderecoAutocompleteState extends State<CampoEnderecoAutocomplete> {
     _ultimaBusca = q;
     _atualizar(_sugestoes, carregando: true, semResultado: false);
     try {
-      final res = await _geo.buscar(q);
+      final res =
+          await _geo.buscar(q, cidade: widget.cidade, uf: widget.uf);
       if (!mounted) return;
       _atualizar(res, carregando: false, semResultado: res.isEmpty);
     } catch (_) {
@@ -110,6 +118,9 @@ class _CampoEnderecoAutocompleteState extends State<CampoEnderecoAutocomplete> {
   }
 
   void _escolher(EnderecoSugestao s) {
+    // Guarda contra escolha repetida (o mesmo toque pode chegar por mais de um
+    // caminho de evento).
+    if (_temCoord && widget.controller.text == s.descricao) return;
     widget.controller.text = s.descricao;
     widget.controller.selection =
         TextSelection.collapsed(offset: s.descricao.length);
@@ -200,14 +211,21 @@ class _CampoEnderecoAutocompleteState extends State<CampoEnderecoAutocomplete> {
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, i) {
         final s = _sugestoes[i];
-        return ListTile(
-          dense: true,
-          leading: const Icon(Icons.place_outlined, size: 20),
-          title: Text(s.descricao,
-              maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text(s.descricaoCompleta,
-              maxLines: 2, overflow: TextOverflow.ellipsis),
-          onTap: () => _escolher(s),
+        // Listener/onPointerDown em vez de onTap: ao tocar na sugestão o campo
+        // perde o foco PRIMEIRO, o ouvinte de foco fechava a lista e o toque
+        // morria junto — a pessoa clicava e nada acontecia, ficando só o texto
+        // digitado. O evento de "pressionou" chega antes da troca de foco.
+        return Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (_) => _escolher(s),
+          child: ListTile(
+            dense: true,
+            leading: const Icon(Icons.place_outlined, size: 20),
+            title: Text(s.descricao,
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: Text(s.descricaoCompleta,
+                maxLines: 2, overflow: TextOverflow.ellipsis),
+          ),
         );
       },
     );

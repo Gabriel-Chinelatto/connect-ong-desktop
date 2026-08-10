@@ -39,16 +39,40 @@ class GeocodingService {
   static const _userAgent =
       'ConnectONG-Desktop/1.0 (TCC COTIL/UNICAMP; contato echinelat@gmail.com)';
 
-  Future<List<EnderecoSugestao>> buscar(String consulta) async {
+  /// Busca endereços reais.
+  ///
+  /// [cidade] e [uf], quando informadas, ANCORAM a consulta na localidade da
+  /// ONG: digitar "cotil" passa a procurar "cotil, Limeira, SP" em vez de
+  /// varrer o Brasil inteiro. Sem isso o Nominatim devolvia ruas homônimas de
+  /// outros estados no topo, e a pessoa não achava a própria rua.
+  Future<List<EnderecoSugestao>> buscar(
+    String consulta, {
+    String? cidade,
+    String? uf,
+  }) async {
     final q = consulta.trim();
     if (q.length < 4) return const [];
 
+    // Só acrescenta a cidade/UF se a pessoa ainda não as digitou.
+    final alvo = _semAcento(q).toLowerCase();
+    final termos = <String>[q];
+    final c = (cidade ?? '').trim();
+    final u = (uf ?? '').trim();
+    if (c.isNotEmpty && !alvo.contains(_semAcento(c).toLowerCase())) {
+      termos.add(c);
+    }
+    if (u.isNotEmpty && !alvo.contains(_semAcento(u).toLowerCase())) {
+      termos.add(u);
+    }
+
     final uri = Uri.parse(_base).replace(queryParameters: {
-      'q': q,
+      'q': termos.join(', '),
       'format': 'jsonv2',
       'addressdetails': '1',
       'countrycodes': 'br', // só endereços do Brasil
-      'limit': '6',
+      // 8 resultados: sobra margem para ordenar por relevância e ainda mostrar
+      // as 6 melhores.
+      'limit': '8',
       'accept-language': 'pt-BR',
     });
 
@@ -64,11 +88,46 @@ class GeocodingService {
     final decoded = jsonDecode(utf8.decode(resp.bodyBytes));
     if (decoded is! List) return const [];
 
-    return decoded
+    final sugestoes = decoded
         .whereType<Map<String, dynamic>>()
         .map(_daJson)
         .whereType<EnderecoSugestao>()
         .toList();
+
+    // Relevância: o que está na cidade da ONG vem primeiro; depois o que
+    // começa com o texto digitado (e não apenas contém). O Nominatim ordena
+    // por "importância" do lugar, que costuma jogar a capital do estado para
+    // cima mesmo quando a pessoa procura uma rua da própria cidade.
+    final cidadeAlvo = _semAcento((cidade ?? '').trim()).toLowerCase();
+    final digitado = _semAcento(q).toLowerCase();
+    int pontos(EnderecoSugestao s) {
+      var p = 0;
+      final desc = _semAcento(s.descricao).toLowerCase();
+      if (cidadeAlvo.isNotEmpty &&
+          _semAcento(s.cidade ?? '').toLowerCase() == cidadeAlvo) {
+        p += 10;
+      }
+      if (desc.startsWith(digitado)) p += 4;
+      if (desc.contains(digitado)) p += 2;
+      return p;
+    }
+
+    sugestoes.sort((a, b) => pontos(b).compareTo(pontos(a)));
+    return sugestoes.take(6).toList();
+  }
+
+  /// Comparação sem acento (o Nominatim devolve "São Paulo", a pessoa digita
+  /// "sao paulo").
+  static String _semAcento(String s) {
+    const de = 'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ';
+    const para = 'aaaaaeeeeiiiiooooouuuucAAAAAEEEEIIIIOOOOOUUUUC';
+    final sb = StringBuffer();
+    for (final r in s.runes) {
+      final ch = String.fromCharCode(r);
+      final i = de.indexOf(ch);
+      sb.write(i >= 0 ? para[i] : ch);
+    }
+    return sb.toString();
   }
 
   EnderecoSugestao? _daJson(Map<String, dynamic> j) {

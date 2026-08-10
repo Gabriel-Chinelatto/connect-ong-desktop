@@ -203,7 +203,8 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
     // local; se não achar, avisamos (mas deixamos salvar — o texto ainda vale).
     if (endereco.isNotEmpty && (_lat == null || _lng == null)) {
       try {
-        final r = await _geo.buscar(endereco);
+        final r = await _geo.buscar(endereco,
+            cidade: _cidade.text, uf: _uf);
         if (r.isNotEmpty) {
           _lat = r.first.lat;
           _lng = r.first.lng;
@@ -300,6 +301,9 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
                           enabled: !_salvando,
                           latInicial: _lat,
                           lngInicial: _lng,
+                          // Ancora a busca na localidade já informada acima.
+                          cidade: _cidade.text,
+                          uf: _uf,
                           onCoordenadas: (lat, lng) {
                             _lat = lat;
                             _lng = lng;

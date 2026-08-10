@@ -73,14 +73,18 @@ class OngService {
 
   // Atualiza o perfil da ONG (PUT /ongs/{id}; so a propria ONG).
   //
-  // ATENCAO ao contrato do backend: nome/email/telefone/cidade/descricao sao
-  // SEMPRE sobrescritos (se faltarem, viram null!) — envie sempre os 5.
-  // Ja capaBase64/endereco/fotosLocal preservam o valor atual quando null;
-  // fotosLocal, quando presente, SUBSTITUI todas as fotos.
+  // Contrato do backend: telefone/cidade/descricao sao sobrescritos pelo que
+  // for enviado; nome/email so mudam quando vem PREENCHIDOS; capaBase64/
+  // endereco/fotosLocal preservam o atual quando null (e fotosLocal, quando
+  // presente, SUBSTITUI todas as fotos).
+  //
+  // O e-mail e opcional aqui de proposito: o GET do perfil NAO o devolve
+  // (privacidade), entao esta tela nunca o conhece. Mandar vazio fazia o
+  // backend responder 500 e a ONG nao conseguia salvar nada.
   Future<void> atualizar({
     required int id,
     required String nome,
-    required String email,
+    String? email,
     required String telefone,
     required String cidade,
     required String descricao,
@@ -96,7 +100,8 @@ class OngService {
       headers: ApiService.jsonHeaders(),
       body: jsonEncode({
         'nome': nome,
-        'email': email,
+        // So vai quando a tela realmente tem o e-mail (ver comentario acima).
+        if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
         'telefone': telefone,
         'cidade': cidade,
         'descricao': descricao,

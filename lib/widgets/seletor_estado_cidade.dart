@@ -43,6 +43,19 @@ class _SeletorEstadoCidadeState extends State<SeletorEstadoCidade> {
     final mapa = await Municipios.carregar();
     if (!mounted) return;
     setState(() => _municipios = mapa);
+    _inferirUfDaCidadeSalva();
+  }
+
+  /// Cadastros antigos guardavam só o nome da cidade (ex.: "Limeira"), sem a
+  /// UF — o dropdown abria vazio mesmo com a cidade preenchida, parecendo um
+  /// dado perdido. Quando o nome existe em um único estado, preenchemos a UF
+  /// sozinhos; havendo cidades homônimas, deixamos em branco de propósito.
+  void _inferirUfDaCidadeSalva() {
+    if (widget.uf != null) return;
+    final cidade = widget.cidadeController.text.trim();
+    if (cidade.isEmpty) return;
+    final uf = ufDaCidade(cidade, _municipios);
+    if (uf != null) widget.onUfChanged(uf);
   }
 
   @override
@@ -67,6 +80,10 @@ class _SeletorEstadoCidadeState extends State<SeletorEstadoCidade> {
             child: Tooltip(
               message: 'Estado (UF) da sua ONG',
               child: DropdownButtonFormField<String>(
+                // A chave força o dropdown a refletir uma UF definida DE FORA
+                // (ex.: inferida da cidade já salva) — `initialValue` sozinho
+                // só vale na primeira construção.
+                key: ValueKey(widget.uf),
                 initialValue: widget.uf,
                 decoration: const InputDecoration(labelText: 'UF'),
                 items: [
@@ -76,8 +93,13 @@ class _SeletorEstadoCidadeState extends State<SeletorEstadoCidade> {
                 onChanged: widget.habilitado
                     ? (v) {
                         if (v == widget.uf) return;
-                        // Trocou de UF: a cidade anterior deixa de valer.
-                        widget.cidadeController.clear();
+                        // Só apaga a cidade se ela NÃO existir no novo estado.
+                        // Antes limpava sempre, e quem só queria corrigir a UF
+                        // de um cadastro antigo perdia a cidade digitada.
+                        final cidade = widget.cidadeController.text;
+                        if (!cidadePertenceAUf(cidade, v, _municipios)) {
+                          widget.cidadeController.clear();
+                        }
                         widget.onUfChanged(v);
                         setState(() {});
                       }

@@ -69,6 +69,36 @@ class Municipios {
   }
 }
 
+/// Descobre a UF de uma cidade quando ela NÃO foi salva junto (cadastros
+/// antigos guardavam só "Limeira", sem o " - SP").
+///
+/// Só responde quando o nome existe em UMA única UF — se houver homônimas
+/// (ex.: "Bom Jesus" aparece em vários estados), devolve null e deixa a
+/// escolha para a pessoa, em vez de chutar um estado errado.
+String? ufDaCidade(String cidade, Map<String, List<String>> municipios) {
+  final alvo = semAcento(cidade.trim()).toLowerCase();
+  if (alvo.isEmpty) return null;
+  String? achada;
+  for (final entrada in municipios.entries) {
+    final tem = entrada.value
+        .any((c) => semAcento(c).toLowerCase() == alvo);
+    if (!tem) continue;
+    if (achada != null) return null; // homônima em mais de um estado
+    achada = entrada.key;
+  }
+  return achada;
+}
+
+/// Diz se a cidade informada pertence à UF (comparação sem acento/caixa).
+bool cidadePertenceAUf(
+    String cidade, String? uf, Map<String, List<String>> municipios) {
+  if (uf == null) return false;
+  final alvo = semAcento(cidade.trim()).toLowerCase();
+  if (alvo.isEmpty) return false;
+  return (municipios[uf] ?? const [])
+      .any((c) => semAcento(c).toLowerCase() == alvo);
+}
+
 /// Remove acentos para comparações de busca (não altera a exibição).
 String semAcento(String s) {
   const de = 'áàâãäéèêëíìîïóòôõöúùûüçÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇ';

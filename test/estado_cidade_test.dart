@@ -1,82 +1,80 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:connect_ong/utils/estado_cidade.dart';
 
-/// Contrato do formato "Cidade - UF" persistido no campo único `cidade` do
-/// backend, e sanidade do asset offline do IBGE (municipios_por_uf.json).
+/// Regras de Estado/Cidade do perfil da ONG.
+///
+/// Contexto (feedback de 10/08/2026): a ONG "Lar Viva" abria o perfil com a
+/// cidade "Limeira" preenchida e o campo UF VAZIO — cadastros antigos guardavam
+/// só o nome da cidade. Pior: escolher a UF apagava a cidade digitada.
 void main() {
-  group('formatarCidadeUf', () {
-    test('junta cidade e UF no formato persistido', () {
-      expect(formatarCidadeUf('São Paulo', 'SP'), 'São Paulo - SP');
+  // Recorte do mapa UF -> municípios (o app carrega o asset completo do IBGE).
+  const municipios = <String, List<String>>{
+    'SP': ['Limeira', 'Campinas', 'São Paulo', 'Bom Jesus dos Perdões'],
+    'RJ': ['Rio de Janeiro', 'Niterói'],
+    'PI': ['Bom Jesus'],
+    'RS': ['Bom Jesus', 'Porto Alegre'],
+  };
+
+  group('ufDaCidade', () {
+    test('descobre a UF quando a cidade existe em um único estado', () {
+      expect(ufDaCidade('Limeira', municipios), 'SP');
+      expect(ufDaCidade('Niterói', municipios), 'RJ');
     });
 
-    test('sem UF (ou UF inválida) devolve só a cidade', () {
-      expect(formatarCidadeUf('Curitiba', null), 'Curitiba');
-      expect(formatarCidadeUf('Curitiba', 'ZZ'), 'Curitiba');
+    test('ignora acento e caixa', () {
+      expect(ufDaCidade('sao paulo', municipios), 'SP');
+      expect(ufDaCidade('NITEROI', municipios), 'RJ');
     });
 
-    test('sem cidade não há o que guardar (mesmo com UF)', () {
-      expect(formatarCidadeUf('', 'SP'), '');
-      expect(formatarCidadeUf('   ', 'SP'), '');
+    test('não chuta quando há cidades homônimas em estados diferentes', () {
+      // "Bom Jesus" existe no PI e no RS: melhor deixar a pessoa escolher.
+      expect(ufDaCidade('Bom Jesus', municipios), isNull);
     });
 
-    test('normaliza espaços e caixa da UF', () {
-      expect(formatarCidadeUf('  Maringá ', ' pr '), 'Maringá - PR');
-    });
-  });
-
-  group('separarCidadeUf', () {
-    test('separa "Cidade - UF" em cidade e UF', () {
-      final r = separarCidadeUf('São Paulo - SP');
-      expect(r.cidade, 'São Paulo');
-      expect(r.uf, 'SP');
-    });
-
-    test('cidade com apóstrofo e hífen interno não confunde o parse', () {
-      final r = separarCidadeUf("Mirassol d'Oeste - MT");
-      expect(r.cidade, "Mirassol d'Oeste");
-      expect(r.uf, 'MT');
-    });
-
-    test('cadastro antigo de campo livre vira só cidade (uf null)', () {
-      final r = separarCidadeUf('Curitiba');
-      expect(r.cidade, 'Curitiba');
-      expect(r.uf, isNull);
-    });
-
-    test('sufixo de 2 letras que NÃO é UF vira parte da cidade', () {
-      final r = separarCidadeUf('Vila Nova - XY');
-      expect(r.cidade, 'Vila Nova - XY');
-      expect(r.uf, isNull);
-    });
-
-    test('ida e volta preserva os valores', () {
-      final r = separarCidadeUf(formatarCidadeUf('João Pessoa', 'PB'));
-      expect(r.cidade, 'João Pessoa');
-      expect(r.uf, 'PB');
+    test('cidade desconhecida ou vazia não inventa estado', () {
+      expect(ufDaCidade('Cidade Que Não Existe', municipios), isNull);
+      expect(ufDaCidade('   ', municipios), isNull);
     });
   });
 
-  group('asset municipios_por_uf.json', () {
-    test('tem as 27 UFs em ordem alfabética, com listas ordenadas', () {
-      final raw =
-          File('assets/dados/municipios_por_uf.json').readAsStringSync();
-      final mapa = jsonDecode(raw) as Map<String, dynamic>;
+  group('cidadePertenceAUf', () {
+    test('reconhece a cidade do estado escolhido', () {
+      expect(cidadePertenceAUf('Limeira', 'SP', municipios), isTrue);
+      expect(cidadePertenceAUf('limeira', 'SP', municipios), isTrue);
+    });
 
-      expect(mapa.keys.toList(), ufsBrasil, reason: '27 UFs, alfabético');
-      for (final e in mapa.entries) {
-        final cidades = (e.value as List).whereType<String>().toList();
-        expect(cidades, isNotEmpty, reason: 'UF ${e.key} sem municípios');
-        final ordenada = [...cidades]..sort((a, b) => semAcento(a)
-            .toLowerCase()
-            .compareTo(semAcento(b).toLowerCase()));
-        expect(cidades, ordenada, reason: 'UF ${e.key} fora de ordem');
-      }
-      expect((mapa['SP'] as List), contains('São Paulo'));
-      expect((mapa['DF'] as List), ['Brasília']);
+    test('nega quando a cidade é de outro estado', () {
+      expect(cidadePertenceAUf('Limeira', 'RJ', municipios), isFalse);
+    });
+
+    test('sem UF escolhida não pertence a nada', () {
+      expect(cidadePertenceAUf('Limeira', null, municipios), isFalse);
+    });
+  });
+
+  group('formatar/separar (contrato do campo único do backend)', () {
+    test('ida e volta preserva cidade e UF', () {
+      final salvo = formatarCidadeUf('Limeira', 'SP');
+      expect(salvo, 'Limeira - SP');
+
+      final lido = separarCidadeUf(salvo);
+      expect(lido.cidade, 'Limeira');
+      expect(lido.uf, 'SP');
+    });
+
+    test('cadastro antigo (só a cidade) é lido sem UF', () {
+      final lido = separarCidadeUf('Limeira');
+      expect(lido.cidade, 'Limeira');
+      expect(lido.uf, isNull);
+      // ... e é daí que a inferência acima entra em ação:
+      expect(ufDaCidade(lido.cidade, municipios), 'SP');
+    });
+
+    test('sufixo que não é UF continua fazendo parte do nome', () {
+      final lido = separarCidadeUf('Santa Cruz - ZZ');
+      expect(lido.cidade, 'Santa Cruz - ZZ');
+      expect(lido.uf, isNull);
     });
   });
 }

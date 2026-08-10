@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../services/assistente_dev_service.dart';
-import '../../theme/app_colors.dart';
 import '../../theme/app_radius.dart';
 import '../../theme/app_spacing.dart';
 
@@ -28,8 +27,13 @@ class _Msg {
 }
 
 class _DesenvolvimentoChatScreenState extends State<DesenvolvimentoChatScreen> {
-  static const Color _border = Color(0xFFE2E8F0);
-  static const Color _muted = Color(0xFFF1F5F9);
+  // As cores desta tela vêm do TEMA (claro/escuro), não de constantes fixas.
+  // Antes eram todas claras: no modo noturno a tela continuava branca e, pior,
+  // o texto DIGITADO ficava invisível (o campo tinha fundo claro fixo e a cor
+  // da letra vinha do tema, ou seja, branco no branco).
+  ColorScheme get _cs => Theme.of(context).colorScheme;
+  Color get _border => _cs.outlineVariant;
+  Color get _muted => _cs.surfaceContainerHighest;
 
   final AssistenteDevService _service = AssistenteDevService();
   final TextEditingController _controller = TextEditingController();
@@ -110,11 +114,11 @@ class _DesenvolvimentoChatScreenState extends State<DesenvolvimentoChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _cs.surface,
       appBar: AppBar(
         title: const Text('Sobre o Desenvolvimento'),
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: _cs.surfaceContainerHighest,
+        foregroundColor: _cs.onSurface,
         elevation: 0,
       ),
       body: Center(
@@ -145,8 +149,8 @@ class _DesenvolvimentoChatScreenState extends State<DesenvolvimentoChatScreen> {
   Widget _bolhaBoas() {
     return _balao(
       alinhado: Alignment.centerLeft,
-      cor: AppColors.surface,
-      corTexto: AppColors.textPrimary,
+      cor: _cs.surfaceContainerLow,
+      corTexto: _cs.onSurface,
       comBorda: true,
       filho: const Text(
         'Oi! 👋 Posso explicar como o Connect ONG foi desenvolvido: tecnologias, '
@@ -167,12 +171,12 @@ class _DesenvolvimentoChatScreenState extends State<DesenvolvimentoChatScreen> {
             ActionChip(
               label: Text(c),
               onPressed: () => _enviar(c),
-              backgroundColor: AppColors.surface,
-              labelStyle: const TextStyle(
-                  color: AppColors.textPrimary,
+              backgroundColor: _cs.surfaceContainerLow,
+              labelStyle: TextStyle(
+                  color: _cs.onSurface,
                   fontWeight: FontWeight.w600,
                   fontSize: 13),
-              side: const BorderSide(color: _border),
+              side: BorderSide(color: _border),
               shape: const StadiumBorder(),
             ),
         ],
@@ -184,20 +188,20 @@ class _DesenvolvimentoChatScreenState extends State<DesenvolvimentoChatScreen> {
     if (m.papel == _Papel.usuario) {
       return _balao(
         alinhado: Alignment.centerRight,
-        cor: AppColors.primary,
-        corTexto: Colors.white,
+        cor: _cs.primary,
+        corTexto: _cs.onPrimary,
         filho: Text(m.texto, style: const TextStyle(height: 1.35)),
       );
     }
     if (m.papel == _Papel.erro) {
       return _balao(
         alinhado: Alignment.centerLeft,
-        cor: const Color(0xFFFDECEA),
-        corTexto: AppColors.error,
+        cor: _cs.errorContainer,
+        corTexto: _cs.onErrorContainer,
         filho: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 18, color: AppColors.error),
+            Icon(Icons.error_outline, size: 18, color: _cs.onErrorContainer),
             const SizedBox(width: AppSpacing.xs),
             Flexible(child: Text(m.texto)),
           ],
@@ -206,8 +210,8 @@ class _DesenvolvimentoChatScreenState extends State<DesenvolvimentoChatScreen> {
     }
     return _balao(
       alinhado: Alignment.centerLeft,
-      cor: AppColors.surface,
-      corTexto: AppColors.textPrimary,
+      cor: _cs.surfaceContainerLow,
+      corTexto: _cs.onSurface,
       comBorda: true,
       filho: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -222,11 +226,11 @@ class _DesenvolvimentoChatScreenState extends State<DesenvolvimentoChatScreen> {
                   color: _muted,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
-                child: const Text('Modo básico',
+                child: Text('Modo básico',
                     style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textSecondary)),
+                        color: _cs.onSurfaceVariant)),
               ),
             ),
         ],
@@ -237,8 +241,8 @@ class _DesenvolvimentoChatScreenState extends State<DesenvolvimentoChatScreen> {
   Widget _digitando() {
     return _balao(
       alinhado: Alignment.centerLeft,
-      cor: AppColors.surface,
-      corTexto: AppColors.textSecondary,
+      cor: _cs.surfaceContainerLow,
+      corTexto: _cs.onSurfaceVariant,
       comBorda: true,
       filho: const Row(
         mainAxisSize: MainAxisSize.min,
@@ -291,8 +295,8 @@ class _DesenvolvimentoChatScreenState extends State<DesenvolvimentoChatScreen> {
   Widget _campoEnvio() {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
+      decoration: BoxDecoration(
+        color: _cs.surfaceContainerHighest,
         border: Border(top: BorderSide(color: _border)),
       ),
       child: Row(
@@ -302,10 +306,14 @@ class _DesenvolvimentoChatScreenState extends State<DesenvolvimentoChatScreen> {
               controller: _controller,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _enviar(),
+              // style explicito: sem ele a cor da letra vinha do tema e
+              // sumia contra o fundo claro fixo do campo.
+              style: TextStyle(color: _cs.onSurface),
               decoration: InputDecoration(
                 hintText: 'Pergunte sobre o desenvolvimento do projeto…',
+                hintStyle: TextStyle(color: _cs.onSurfaceVariant),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: _cs.surfaceContainerLow,
                 contentPadding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md, vertical: AppSpacing.sm + 4),
                 border: OutlineInputBorder(
@@ -317,15 +325,15 @@ class _DesenvolvimentoChatScreenState extends State<DesenvolvimentoChatScreen> {
           ),
           const SizedBox(width: AppSpacing.sm),
           Material(
-            color: AppColors.primary,
+            color: _cs.primary,
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: _carregando ? null : () => _enviar(),
-              child: const Padding(
-                padding: EdgeInsets.all(AppSpacing.sm + 3),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.sm + 3),
                 child:
-                    Icon(Icons.send_rounded, color: Colors.white, size: 22),
+                    Icon(Icons.send_rounded, color: _cs.onPrimary, size: 22),
               ),
             ),
           ),
