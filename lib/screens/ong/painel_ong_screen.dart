@@ -2280,15 +2280,24 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
                   controller: _tituloController,
                   autofocus: true,
                   textInputAction: TextInputAction.next,
+                  // Limites iguais aos do backend (NecessidadeRequestDTO):
+                  // 3 a 150. Sem o minimo, um titulo de 1-2 letras so falhava
+                  // ao salvar, com erro generico.
+                  maxLength: 150,
                   decoration: const InputDecoration(labelText: 'Título'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Informe o título' : null,
+                  validator: (v) {
+                    final t = (v ?? '').trim();
+                    if (t.isEmpty) return 'Informe o título';
+                    if (t.length < 3) return 'O título precisa de ao menos 3 letras';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _descricaoController,
                   decoration: const InputDecoration(labelText: 'Descrição'),
                   maxLines: 3,
+                  maxLength: 2000, // igual ao backend
                   validator: (v) => (v == null || v.trim().isEmpty)
                       ? 'Informe a descrição'
                       : null,
@@ -2438,6 +2447,7 @@ class _FormCampanhaState extends State<_FormCampanha> {
                   controller: _titulo,
                   autofocus: true,
                   textInputAction: TextInputAction.next,
+                  maxLength: 150, // igual ao backend (CampanhaRequestDTO)
                   decoration: const InputDecoration(labelText: 'Título'),
                   validator: (v) => (v == null || v.trim().length < 3)
                       ? 'Mínimo 3 caracteres'
@@ -2447,6 +2457,10 @@ class _FormCampanhaState extends State<_FormCampanha> {
                 TextFormField(
                   controller: _descricao,
                   maxLines: 3,
+                  // A descricao da CAMPANHA e mais curta que a da necessidade
+                  // no backend (255 x 2000) — o limite aqui evita o erro so na
+                  // hora de salvar.
+                  maxLength: 255,
                   decoration: const InputDecoration(labelText: 'Descrição'),
                   validator: (v) => (v == null || v.trim().isEmpty)
                       ? 'Informe a descrição'

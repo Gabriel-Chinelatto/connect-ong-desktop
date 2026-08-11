@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../services/demo_service.dart';
 import '../../services/perfil_service.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/confirmar_saida.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/feedback/app_snackbar.dart';
 import '../auth/login_screen.dart';
@@ -76,33 +77,19 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
     AppSnackbar.info(context, 'Alterações descartadas.');
   }
 
-  /// Ao tentar sair com mudanças pendentes: "Descartar alterações?".
+  /// Ao tentar sair com mudanças pendentes. O diálogo vive em
+  /// widgets/confirmar_saida.dart, compartilhado com as telas de edição.
   Future<void> _confirmarSaida() async {
-    final descartar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Descartar alterações?'),
-        content: const Text(
-            'Você tem mudanças que ainda não foram salvas. Se sair agora, '
-            'elas serão perdidas.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Continuar editando'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Descartar'),
-          ),
-        ],
-      ),
-    );
-    if (descartar == true && mounted) {
-      Navigator.of(context).pop();
+    final navegador = Navigator.of(context);
+    final escolha = await perguntarSaida(context, permiteSalvar: true);
+    switch (escolha) {
+      case SaidaEscolha.salvar:
+        await _salvar();
+        if (navegador.mounted) navegador.pop();
+      case SaidaEscolha.descartar:
+        if (navegador.mounted) navegador.pop();
+      case SaidaEscolha.continuarEditando:
+        break;
     }
   }
 

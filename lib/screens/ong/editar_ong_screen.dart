@@ -10,6 +10,7 @@ import '../../theme/app_spacing.dart';
 import '../../utils/estado_cidade.dart';
 import '../../utils/imagens.dart';
 import '../../widgets/campo_endereco_autocomplete.dart';
+import '../../widgets/confirmar_saida.dart';
 import '../../widgets/seletor_estado_cidade.dart';
 import '../../widgets/visualizador_imagem.dart';
 import '../../widgets/feedback/app_snackbar.dart';
@@ -67,6 +68,23 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
   bool _carregando = true;
   bool _erro = false;
   bool _salvando = false;
+
+  /// Retrato dos campos como estavam na última carga/salvamento. Serve para
+  /// saber se há alteração pendente e avisar antes de sair da tela.
+  String _retratoSalvo = '';
+
+  String _retratoAtual() => [
+        _nome.text,
+        _telefone.text,
+        _cidade.text,
+        _uf ?? '',
+        _descricao.text,
+        _endereco.text,
+      ].join('');
+
+  bool get _temMudanca =>
+      !_carregando &&
+      (_retratoAtual() != _retratoSalvo || _capaAlterada || _fotosAlteradas);
   bool _escolhendoArquivo = false;
 
   @override
@@ -124,6 +142,7 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
         _fotosAlteradas = false;
         _carregando = false;
       });
+      _retratoSalvo = _retratoAtual();
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -189,12 +208,12 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
     }
   }
 
-  Future<void> _salvar() async {
+  Future<bool> _salvar() async {
     if (_nome.text.trim().isEmpty) {
       AppSnackbar.erro(context, 'O nome da ONG não pode ficar vazio.');
-      return;
+      return false;
     }
-    if (_salvando) return;
+    if (_salvando) return false;
     setState(() => _salvando = true);
 
     final endereco = _endereco.text.trim();
@@ -236,22 +255,34 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
         capaBase64: _capaAlterada ? _capaBase64 : null,
         fotosLocal: _fotosAlteradas ? List.of(_fotosBase64) : null,
       );
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() {
         _salvando = false;
         _capaAlterada = false;
         _fotosAlteradas = false;
       });
+      // Novo ponto de referência: a partir daqui não há mais pendência.
+      _retratoSalvo = _retratoAtual();
       AppSnackbar.sucesso(context, 'Perfil da ONG atualizado! 💚');
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() => _salvando = false);
       AppSnackbar.erro(context, ApiService.mensagemAmigavel(e));
+      return false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    return GuardaDeSaida(
+      temMudanca: _temMudanca,
+      aoSalvar: _salvar,
+      child: _conteudo(context),
+    );
+  }
+
+  Widget _conteudo(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil da ONG')),
       body: _carregando
@@ -272,8 +303,9 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
                       children: [
                         _secaoCapa(),
                         const SizedBox(height: AppSpacing.lg),
-                        _campo(_nome, 'Nome da ONG'),
-                        _campo(_telefone, 'Telefone'),
+                        // Limites iguais aos do backend (OngUpdateDTO).
+                        _campo(_nome, 'Nome da ONG', maxLength: 100),
+                        _campo(_telefone, 'Telefone', maxLength: 20),
                         // Estado antes da cidade: a UF filtra o autocomplete
                         // (mesmo padrão do app mobile).
                         SeletorEstadoCidade(
@@ -283,7 +315,7 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
                           habilitado: !_salvando,
                         ),
                         _campo(_descricao, 'Descrição (o que a ONG faz)',
-                            linhas: 3),
+                            linhas: 3, maxLength: 1000),
                         // Escreve/refina o "Sobre" com IA (loop de ajuste),
                         // ancorado nos dados reais desta ONG.
                         Align(
@@ -347,12 +379,26 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
     AppSnackbar.sucesso(context, 'Sobre atualizado. Não esqueça de Salvar.');
   }
 
-  Widget _campo(TextEditingController c, String label, {int linhas = 1}) {
+  /// Campo de texto do formulário.
+  ///
+  /// [maxLength] espelha o limite que o BACKEND valida (ver OngUpdateDTO).
+  /// Sem ele, a ONG escrevia uma descrição longa e só descobria o problema ao
+  /// salvar, com um erro genérico — agora o próprio campo impede e mostra o
+  /// contador quando está chegando perto do limite.
+  Widget _campo(TextEditingController c, String label,
+      {int linhas = 1, int? maxLength}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextField(
         controller: c,
         maxLines: linhas,
+        maxLength: maxLength,
+        buildCounter: (context,
+                {required currentLength, required isFocused, maxLength}) =>
+            (maxLength != null && currentLength > maxLength * 0.8)
+                ? Text('$currentLength/$maxLength',
+                    style: Theme.of(context).textTheme.bodySmall)
+                : null,
         decoration: InputDecoration(labelText: label),
       ),
     );

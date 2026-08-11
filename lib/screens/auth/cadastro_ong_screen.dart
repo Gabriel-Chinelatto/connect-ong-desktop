@@ -118,12 +118,22 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
                         color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 24),
-                  _campo(_nome, 'Nome da ONG', obrigatorio: true),
+                  _campo(_nome, 'Nome da ONG',
+                      obrigatorio: true,
+                      maxLength: 120,
+                      validador: (v) {
+                        final t = (v ?? '').trim();
+                        if (t.isEmpty) return 'Campo obrigatório';
+                        if (t.length < 2) return 'Nome muito curto';
+                        return null;
+                      }),
                   _campo(_email, 'E-mail',
                       obrigatorio: true,
+                      maxLength: 150,
                       teclado: TextInputType.emailAddress,
                       validador: _validarEmail),
                   _campo(_telefone, 'Telefone',
+                      maxLength: 20,
                       teclado: TextInputType.phone),
                   // Estado antes da cidade: a UF filtra o autocomplete
                   // (mesmo padrão do app mobile).
@@ -133,8 +143,9 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
                     onUfChanged: (v) => setState(() => _uf = v),
                     habilitado: !_enviando,
                   ),
-                  _campo(_cnpj, 'CNPJ (opcional, para verificação)'),
-                  _campo(_descricao, 'Descrição', linhas: 3),
+                  _campo(_cnpj, 'CNPJ (opcional, para verificação)',
+                      maxLength: 20),
+                  _campo(_descricao, 'Descrição', linhas: 3, maxLength: 1000),
                   _campo(_senha, 'Senha',
                       obrigatorio: true,
                       senha: true,
@@ -250,6 +261,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
     int linhas = 1,
     TextInputType? teclado,
     String? Function(String?)? validador,
+    int? maxLength,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -258,6 +270,15 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
         obscureText: senha,
         maxLines: senha ? 1 : linhas,
         keyboardType: teclado,
+        // Espelha o limite do backend (OngRegistroDTO), para o erro aparecer
+        // enquanto se digita e nao so ao enviar o cadastro.
+        maxLength: maxLength,
+        buildCounter: (context,
+                {required currentLength, required isFocused, maxLength}) =>
+            (maxLength != null && currentLength > maxLength * 0.8)
+                ? Text('$currentLength/$maxLength',
+                    style: Theme.of(context).textTheme.bodySmall)
+                : null,
         decoration: InputDecoration(labelText: label),
         validator: validador ??
             (obrigatorio
