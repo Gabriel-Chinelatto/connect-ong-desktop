@@ -523,10 +523,16 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
     final formKey = GlobalKey<FormState>();
     final usuarioId = ConfigController.instance.usuarioId;
     bool enviando = false;
+    bool salvou = false; // pop após salvar com sucesso não pergunta
 
     await showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
+      // Guarda de saída: qualquer campo digitado pede confirmação ao fechar.
+      builder: (dialogContext) => GuardaDeSaidaDialog(
+        temMudanca: () =>
+            !salvou &&
+            (novoEmail.text.isNotEmpty || senha.text.isNotEmpty),
+        child: StatefulBuilder(
         builder: (dialogContext, setLocal) => AlertDialog(
           title: const Text('Alterar e-mail'),
           content: Form(
@@ -562,8 +568,9 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
           ),
           actions: [
             TextButton(
+              // maybePop: passa pela mesma confirmação do toque fora.
               onPressed:
-                  enviando ? null : () => Navigator.pop(dialogContext),
+                  enviando ? null : () => Navigator.maybePop(dialogContext),
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
@@ -580,6 +587,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                         // Atualiza o e-mail da sessão em memória.
                         ConfigController.instance.setUsuarioEmail(email);
                         if (!dialogContext.mounted) return;
+                        salvou = true; // sucesso: fecha sem perguntar
                         Navigator.pop(dialogContext);
                         if (!mounted) return;
                         AppSnackbar.sucesso(
@@ -605,6 +613,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
             ),
           ],
         ),
+        ),
       ),
     );
 
@@ -617,10 +626,15 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
     final nova = TextEditingController();
     final formKey = GlobalKey<FormState>();
     final usuarioId = ConfigController.instance.usuarioId;
+    bool salvou = false; // pop após salvar com sucesso não pergunta
 
     await showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      // Guarda de saída: qualquer campo digitado pede confirmação ao fechar.
+      builder: (dialogContext) => GuardaDeSaidaDialog(
+        temMudanca: () =>
+            !salvou && (atual.text.isNotEmpty || nova.text.isNotEmpty),
+        child: AlertDialog(
         title: const Text('Alterar senha'),
         content: Form(
           key: formKey,
@@ -647,7 +661,8 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            // maybePop: passa pela mesma confirmação do toque fora.
+            onPressed: () => Navigator.maybePop(dialogContext),
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
@@ -658,6 +673,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                 await PerfilService()
                     .alterarSenha(usuarioId, atual.text, nova.text);
                 if (!dialogContext.mounted) return;
+                salvou = true; // sucesso: fecha sem perguntar
                 Navigator.pop(dialogContext);
                 if (!mounted) return;
                 AppSnackbar.sucesso(context, 'Senha alterada com sucesso! 💚');
@@ -674,6 +690,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
             child: const Text('Salvar'),
           ),
         ],
+        ),
       ),
     );
 

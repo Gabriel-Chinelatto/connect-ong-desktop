@@ -5,6 +5,7 @@ import '../../services/api_service.dart';
 import '../../services/ong_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/estado_cidade.dart';
+import '../../widgets/confirmar_saida.dart';
 import '../../widgets/seletor_estado_cidade.dart';
 import '../legal/documentos_legais_screen.dart';
 
@@ -33,8 +34,35 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
   bool _enviando = false;
   bool _aceitouTermos = false;
 
+  /// Cadastro concluído: sair depois do sucesso não deve perguntar.
+  bool _cadastrou = false;
+
   /// UF escolhida no dropdown (o backend guarda "Cidade - UF" num campo só).
   String? _uf;
+
+  /// Todos os campos de texto (para detectar preenchimento e reagir a ele).
+  late final List<TextEditingController> _controllers = [
+    _nome, _email, _telefone, _cidade, _descricao, _cnpj, _senha,
+  ];
+
+  /// Há algo preenchido e o cadastro ainda não foi concluído?
+  bool get _temMudanca =>
+      !_cadastrou &&
+      (_controllers.any((c) => c.text.isNotEmpty) ||
+          _uf != null ||
+          _aceitouTermos);
+
+  @override
+  void initState() {
+    super.initState();
+    // Digitar não rebuilda a tela sozinho; o guarda de saída (canPop) precisa
+    // ser reavaliado a cada tecla para não liberar a saída sem aviso.
+    for (final c in _controllers) {
+      c.addListener(_reavaliarGuarda);
+    }
+  }
+
+  void _reavaliarGuarda() => setState(() {});
 
   @override
   void dispose() {
@@ -72,6 +100,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
         senha: _senha.text,
       );
       if (!mounted) return;
+      _cadastrou = true; // sucesso: sair sem perguntar
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('ONG cadastrada! Agora é só fazer login. 💚'),
@@ -93,7 +122,11 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // Guarda de saída: avisa se algo já foi preenchido e o cadastro não foi
+    // concluído. Sem aoSalvar — não faz sentido "salvar" cadastro pela metade.
+    return GuardaDeSaida(
+      temMudanca: _temMudanca,
+      child: Scaffold(
       appBar: AppBar(title: const Text('Cadastro de ONG')),
       body: Center(
         child: SingleChildScrollView(
@@ -172,6 +205,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

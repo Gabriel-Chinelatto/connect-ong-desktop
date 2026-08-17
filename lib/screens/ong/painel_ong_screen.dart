@@ -25,6 +25,7 @@ import '../../services/atividade_service.dart';
 import '../../services/perfil_publico_service.dart';
 import '../../services/relatorio_pdf_service.dart';
 import '../../widgets/common/dialog_pontuacao.dart';
+import '../../widgets/confirmar_saida.dart';
 import '../auth/login_screen.dart';
 import 'chat_ong_screen.dart';
 import 'configuracoes_screen.dart';
@@ -2163,6 +2164,21 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
 
   bool get _edicao => widget.necessidade != null;
 
+  // Retrato do estado inicial (vazio ao criar; valores carregados ao editar)
+  // para avisar antes de fechar o dialog com mudança pendente.
+  late final String _tituloInicial;
+  late final String _descricaoInicial;
+  late final String _categoriaInicial;
+  late final bool _urgenteInicial;
+  bool _salvou = false; // pop após salvar com sucesso não pergunta
+
+  bool get _temMudanca =>
+      !_salvou &&
+      (_tituloController.text != _tituloInicial ||
+          _descricaoController.text != _descricaoInicial ||
+          _categoria != _categoriaInicial ||
+          _urgente != _urgenteInicial);
+
   @override
   void initState() {
     super.initState();
@@ -2178,6 +2194,10 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
       _descricaoController.text = n.descricao;
       _urgente = n.urgente;
     }
+    _tituloInicial = _tituloController.text;
+    _descricaoInicial = _descricaoController.text;
+    _categoriaInicial = _categoria;
+    _urgenteInicial = _urgente;
   }
 
   @override
@@ -2251,6 +2271,7 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
         );
       }
       if (!mounted) return;
+      _salvou = true; // fechar após o sucesso não deve perguntar
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -2266,7 +2287,7 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    final dialogo = AlertDialog(
       title: Text(_edicao ? 'Editar necessidade' : 'Publicar necessidade'),
       content: SizedBox(
         width: 420,
@@ -2354,7 +2375,8 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
       ),
       actions: [
         TextButton(
-          onPressed: _enviando ? null : () => Navigator.pop(context, false),
+          // maybePop: passa pela mesma confirmação do toque fora.
+          onPressed: _enviando ? null : () => Navigator.maybePop(context, false),
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
@@ -2370,6 +2392,8 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
         ),
       ],
     );
+    // Guarda de saída: avisa antes de fechar com mudança pendente.
+    return GuardaDeSaidaDialog(temMudanca: () => _temMudanca, child: dialogo);
   }
 }
 
@@ -2394,8 +2418,16 @@ class _FormCampanhaState extends State<_FormCampanha> {
   final _meta = TextEditingController();
   bool _destaque = false;
   bool _enviando = false;
+  bool _salvou = false; // pop após criar com sucesso não pergunta
 
   final CampanhaService _service = CampanhaService();
+
+  // Sujo = algo digitado (o dialog só existe no modo criação).
+  bool get _temMudanca =>
+      !_salvou &&
+      (_titulo.text.isNotEmpty ||
+          _descricao.text.isNotEmpty ||
+          _meta.text.isNotEmpty);
 
   @override
   void dispose() {
@@ -2418,6 +2450,7 @@ class _FormCampanhaState extends State<_FormCampanha> {
         ongId: widget.ongId,
       );
       if (!mounted) return;
+      _salvou = true; // fechar após o sucesso não deve perguntar
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -2433,7 +2466,7 @@ class _FormCampanhaState extends State<_FormCampanha> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    final dialogo = AlertDialog(
       title: const Text('Nova campanha'),
       content: SizedBox(
         width: 440,
@@ -2518,7 +2551,8 @@ class _FormCampanhaState extends State<_FormCampanha> {
       ),
       actions: [
         TextButton(
-          onPressed: _enviando ? null : () => Navigator.pop(context, false),
+          // maybePop: passa pela mesma confirmação do toque fora.
+          onPressed: _enviando ? null : () => Navigator.maybePop(context, false),
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
@@ -2534,5 +2568,7 @@ class _FormCampanhaState extends State<_FormCampanha> {
         ),
       ],
     );
+    // Guarda de saída: avisa antes de fechar com mudança pendente.
+    return GuardaDeSaidaDialog(temMudanca: () => _temMudanca, child: dialogo);
   }
 }

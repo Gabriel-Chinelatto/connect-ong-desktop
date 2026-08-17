@@ -81,3 +81,44 @@ class GuardaDeSaida extends StatelessWidget {
     );
   }
 }
+
+/// Guarda de saída para DIALOGS (AlertDialog aberto via showDialog).
+///
+/// Diferente do [GuardaDeSaida], recebe [temMudanca] como FUNÇÃO e usa
+/// `canPop: false` sempre: digitar num TextField não rebuilda o dialog, então
+/// um `canPop: !temMudanca` ficaria desatualizado e deixaria sair sem avisar.
+/// A checagem acontece na hora do pop (toque fora, Esc e "Cancelar" passam
+/// pelo maybePop). Pop programático via `Navigator.pop` (após salvar com
+/// sucesso) NÃO passa por aqui e fecha direto.
+class GuardaDeSaidaDialog extends StatelessWidget {
+  final bool Function() temMudanca;
+  final Widget child;
+
+  const GuardaDeSaidaDialog({
+    super.key,
+    required this.temMudanca,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, resultado) async {
+        if (didPop) return;
+        final navegador = Navigator.of(context);
+        if (!temMudanca()) {
+          // Nada pendente: fecha repassando o resultado (ex.: false do
+          // Cancelar; null do toque fora).
+          navegador.pop(resultado);
+          return;
+        }
+        final escolha = await perguntarSaida(context);
+        if (escolha == SaidaEscolha.descartar && navegador.mounted) {
+          navegador.pop(resultado);
+        }
+      },
+      child: child,
+    );
+  }
+}

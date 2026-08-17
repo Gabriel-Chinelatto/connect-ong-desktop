@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -10,6 +11,7 @@ import '../../services/avaliacao_doador_service.dart';
 import '../../services/prestacao_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/imagens.dart';
+import '../../widgets/confirmar_saida.dart';
 import '../../widgets/visualizador_imagem.dart';
 import '../../widgets/feedback/empty_state.dart';
 
@@ -39,6 +41,15 @@ class _FormPrestacaoState extends State<FormPrestacao> {
 
   bool _enviando = false;
   bool _escolhendoFoto = false;
+  bool _publicou = false; // pop após publicar com sucesso não pergunta
+
+  // Sujo = algo digitado ou foto adicionada.
+  bool get _temMudanca =>
+      !_publicou &&
+      (_titulo.text.isNotEmpty ||
+          _descricao.text.isNotEmpty ||
+          _valor.text.isNotEmpty ||
+          _fotos.isNotEmpty);
 
   @override
   void dispose() {
@@ -85,6 +96,7 @@ class _FormPrestacaoState extends State<FormPrestacao> {
         valorUtilizado: valorTexto.isEmpty ? null : double.parse(valorTexto),
       );
       if (!mounted) return;
+      _publicou = true; // fechar após o sucesso não deve perguntar
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -101,7 +113,7 @@ class _FormPrestacaoState extends State<FormPrestacao> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return AlertDialog(
+    final dialogo = AlertDialog(
       title: const Text('Prestar contas'),
       content: SizedBox(
         width: 460,
@@ -199,7 +211,8 @@ class _FormPrestacaoState extends State<FormPrestacao> {
       ),
       actions: [
         TextButton(
-          onPressed: _enviando ? null : () => Navigator.pop(context, false),
+          // maybePop: passa pela mesma confirmação do toque fora.
+          onPressed: _enviando ? null : () => Navigator.maybePop(context, false),
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
@@ -215,6 +228,8 @@ class _FormPrestacaoState extends State<FormPrestacao> {
         ),
       ],
     );
+    // Guarda de saída: avisa antes de fechar com mudança pendente.
+    return GuardaDeSaidaDialog(temMudanca: () => _temMudanca, child: dialogo);
   }
 
   Widget _miniaturaFoto(int indice) {
@@ -478,6 +493,18 @@ class _DialogAvaliarDoadorState extends State<DialogAvaliarDoador> {
   final List<({String base64, Uint8List bytes})> _fotos = [];
   static const int _maxFotos = 3;
   bool _escolhendoFoto = false;
+  bool _salvou = false; // pop após enviar com sucesso não pergunta
+
+  // Retrato inicial (vazio ao avaliar; valores de `existente` ao editar).
+  late final int _notaInicial;
+  late final String _comentarioInicial;
+  late final List<String> _fotosIniciais;
+
+  bool get _temMudanca =>
+      !_salvou &&
+      (_nota != _notaInicial ||
+          _comentario.text != _comentarioInicial ||
+          !listEquals([for (final f in _fotos) f.base64], _fotosIniciais));
 
   @override
   void initState() {
@@ -492,6 +519,9 @@ class _DialogAvaliarDoadorState extends State<DialogAvaliarDoador> {
         // base64 inválido: ignora em silêncio.
       }
     }
+    _notaInicial = _nota;
+    _comentarioInicial = _comentario.text;
+    _fotosIniciais = [for (final f in _fotos) f.base64];
   }
 
   Future<void> _adicionarFoto() async {
@@ -544,6 +574,7 @@ class _DialogAvaliarDoadorState extends State<DialogAvaliarDoador> {
         fotos: [for (final f in _fotos) f.base64],
       );
       if (!mounted) return;
+      _salvou = true; // fechar após o sucesso não deve perguntar
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -570,7 +601,7 @@ class _DialogAvaliarDoadorState extends State<DialogAvaliarDoador> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final editando = widget.existente != null;
-    return AlertDialog(
+    final dialogo = AlertDialog(
       title: Text(editando
           ? 'Editar avaliação — ${widget.doadorNome}'
           : 'Avaliar ${widget.doadorNome}'),
@@ -699,7 +730,8 @@ class _DialogAvaliarDoadorState extends State<DialogAvaliarDoador> {
       ),
       actions: [
         TextButton(
-          onPressed: _enviando ? null : () => Navigator.pop(context, false),
+          // maybePop: passa pela mesma confirmação do toque fora.
+          onPressed: _enviando ? null : () => Navigator.maybePop(context, false),
           child: const Text('Cancelar'),
         ),
         ElevatedButton(
@@ -715,5 +747,7 @@ class _DialogAvaliarDoadorState extends State<DialogAvaliarDoador> {
         ),
       ],
     );
+    // Guarda de saída: avisa antes de fechar com mudança pendente.
+    return GuardaDeSaidaDialog(temMudanca: () => _temMudanca, child: dialogo);
   }
 }
