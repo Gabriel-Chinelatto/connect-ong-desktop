@@ -54,6 +54,12 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
   /// `cidade`; na carga fazemos o parse de volta (separarCidadeUf).
   String? _uf;
 
+  // Logo / foto de perfil (base64 + bytes p/ preview). Vazio = sem logo, e o
+  // cabecalho volta a mostrar a inicial do nome.
+  String _logoBase64 = '';
+  Uint8List? _logoBytes;
+  bool _logoAlterado = false;
+
   // Capa (base64 + bytes p/ preview). Vazio = sem capa.
   String _capaBase64 = '';
   Uint8List? _capaBytes;
@@ -84,7 +90,10 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
 
   bool get _temMudanca =>
       !_carregando &&
-      (_retratoAtual() != _retratoSalvo || _capaAlterada || _fotosAlteradas);
+      (_retratoAtual() != _retratoSalvo ||
+          _logoAlterado ||
+          _capaAlterada ||
+          _fotosAlteradas);
   bool _escolhendoArquivo = false;
 
   @override
@@ -122,6 +131,8 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
         _endereco.text = ong.endereco ?? '';
         _lat = ong.latitude;
         _lng = ong.longitude;
+        _logoBase64 = ong.logoBase64 ?? '';
+        _logoBytes = _decodificar(_logoBase64);
         _capaBase64 = ong.capaBase64 ?? '';
         _capaBytes = _decodificar(_capaBase64);
         _fotosBase64
@@ -138,6 +149,7 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
             ..clear()
             ..addAll(_fotosBytes.map(base64Encode));
         }
+        _logoAlterado = false;
         _capaAlterada = false;
         _fotosAlteradas = false;
         _carregando = false;
@@ -155,10 +167,44 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
   Uint8List? _decodificar(String base64) {
     if (base64.isEmpty) return null;
     try {
-      return base64Decode(base64);
+      // O painel grava base64 puro; o script que ilustra a demonstracao grava
+      // data-URI ("data:image/png;base64,..."). Aceitamos os dois — antes, um
+      // data-URI estourava aqui e a imagem simplesmente nao aparecia.
+      final i = base64.indexOf(',');
+      final limpo =
+          base64.startsWith('data:') && i > 0 ? base64.substring(i + 1) : base64;
+      return base64Decode(limpo);
     } catch (_) {
       return null;
     }
+  }
+
+  Future<void> _escolherLogo() async {
+    if (_escolhendoArquivo) return;
+    _escolhendoArquivo = true;
+    try {
+      // Logo e pequeno e quadrado: 512px ja sobra para o circulo do cabecalho.
+      final img = await escolherImagem(larguraMax: 512);
+      if (img != null && mounted) {
+        setState(() {
+          _logoBase64 = img.base64;
+          _logoBytes = img.bytes;
+          _logoAlterado = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) AppSnackbar.erro(context, ApiService.mensagemAmigavel(e));
+    } finally {
+      _escolhendoArquivo = false;
+    }
+  }
+
+  void _removerLogo() {
+    setState(() {
+      _logoBase64 = '';
+      _logoBytes = null;
+      _logoAlterado = true;
+    });
   }
 
   Future<void> _escolherCapa() async {
@@ -252,12 +298,14 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
         endereco: endereco,
         latitude: _lat,
         longitude: _lng,
+        logoBase64: _logoAlterado ? _logoBase64 : null,
         capaBase64: _capaAlterada ? _capaBase64 : null,
         fotosLocal: _fotosAlteradas ? List.of(_fotosBase64) : null,
       );
       if (!mounted) return false;
       setState(() {
         _salvando = false;
+        _logoAlterado = false;
         _capaAlterada = false;
         _fotosAlteradas = false;
       });
@@ -301,6 +349,8 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
                     child: ListView(
                       padding: const EdgeInsets.all(AppSpacing.lg),
                       children: [
+                        _secaoLogo(),
+                        const SizedBox(height: AppSpacing.lg),
                         _secaoCapa(),
                         const SizedBox(height: AppSpacing.lg),
                         // Limites iguais aos do backend (OngUpdateDTO).
@@ -401,6 +451,62 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
                 : null,
         decoration: InputDecoration(labelText: label),
       ),
+    );
+  }
+
+  // ---- Logo / foto de perfil (quadrado, mostrado em circulo) ----
+  Widget _secaoLogo() {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Logo da ONG',
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        const SizedBox(height: 4),
+        Text(
+          'Imagem quadrada (ex.: 512x512). Aparece em círculo no topo do seu '
+          'perfil e ao lado do nome nas listas. Sem logo, mostramos a inicial.',
+          style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            InkWell(
+              onTap: _salvando ? null : _escolherLogo,
+              customBorder: const CircleBorder(),
+              child: Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: cs.surfaceContainerHighest,
+                  border: Border.all(color: cs.outlineVariant, width: 1.4),
+                  image: _logoBytes != null
+                      ? DecorationImage(
+                          image: MemoryImage(_logoBytes!), fit: BoxFit.cover)
+                      : null,
+                ),
+                child: _logoBytes != null
+                    ? null
+                    : Icon(Icons.add_a_photo_outlined,
+                        color: cs.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            TextButton.icon(
+              onPressed: _salvando ? null : _escolherLogo,
+              icon: const Icon(Icons.upload_outlined, size: 18),
+              label: Text(_logoBytes == null ? 'Escolher logo' : 'Trocar logo'),
+            ),
+            if (_logoBytes != null)
+              TextButton.icon(
+                onPressed: _salvando ? null : _removerLogo,
+                icon: const Icon(Icons.delete_outline, size: 18),
+                label: const Text('Remover'),
+              ),
+          ],
+        ),
+      ],
     );
   }
 

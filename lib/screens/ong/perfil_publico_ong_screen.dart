@@ -30,6 +30,7 @@ class PerfilPublicoOngScreen extends StatefulWidget {
 class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
   final PerfilPublicoService _service = PerfilPublicoService();
   PerfilPublicoOng? _perfil;
+  Uint8List? _logoBytes;
   Uint8List? _capaBytes;
   List<Uint8List> _fotosLocalBytes = [];
   bool _carregando = true;
@@ -48,7 +49,12 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
   Uint8List? _decodificar(String? base64) {
     if (base64 == null || base64.isEmpty) return null;
     try {
-      return base64Decode(base64);
+      // Aceita base64 puro (o que o painel grava) e data-URI (o que o script
+      // que ilustra a demonstracao grava).
+      final i = base64.indexOf(',');
+      final limpo =
+          base64.startsWith('data:') && i > 0 ? base64.substring(i + 1) : base64;
+      return base64Decode(limpo);
     } catch (_) {
       return null;
     }
@@ -64,6 +70,7 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
       if (!mounted) return;
       setState(() {
         _perfil = p;
+        _logoBytes = _decodificar(p.logoBase64);
         _capaBytes = _decodificar(p.capaBase64);
         _fotosLocalBytes =
             p.fotosLocal.map(_decodificar).whereType<Uint8List>().toList();
@@ -164,11 +171,16 @@ class _PerfilPublicoOngScreenState extends State<PerfilPublicoOngScreen> {
           CircleAvatar(
             radius: 34,
             backgroundColor: AppColors.primary,
-            child: Text(inicial,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 30,
-                    fontWeight: FontWeight.w700)),
+            // Com logo, ele preenche o circulo; sem logo, continua a inicial.
+            backgroundImage:
+                _logoBytes != null ? MemoryImage(_logoBytes!) : null,
+            child: _logoBytes != null
+                ? null
+                : Text(inicial,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700)),
           ),
           const SizedBox(width: 18),
           Expanded(

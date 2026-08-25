@@ -22,6 +22,7 @@ class PerfilPublicoOng {
   final List<PrestacaoResumo> prestacoes;
 
   /// Capa do perfil (base64, proporcao 3:1). Null = sem capa.
+  final String? logoBase64;
   final String? capaBase64;
 
   /// Endereco completo em texto (rua, numero, bairro).
@@ -60,6 +61,7 @@ class PerfilPublicoOng {
     required this.campanhas,
     required this.avaliacoes,
     required this.prestacoes,
+    this.logoBase64,
     this.capaBase64,
     this.endereco,
     this.latitude,
@@ -98,6 +100,7 @@ class PerfilPublicoOng {
       campanhas: lista('campanhas', CampanhaResumo.fromJson),
       avaliacoes: lista('avaliacoes', AvaliacaoResumo.fromJson),
       prestacoes: lista('prestacoes', PrestacaoResumo.fromJson),
+      logoBase64: j['logoBase64'] as String?,
       capaBase64: j['capaBase64'] as String?,
       endereco: j['endereco'] as String?,
       latitude: (j['latitude'] as num?)?.toDouble(),

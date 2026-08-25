@@ -74,9 +74,9 @@ class OngService {
   // Atualiza o perfil da ONG (PUT /ongs/{id}; so a propria ONG).
   //
   // Contrato do backend: telefone/cidade/descricao sao sobrescritos pelo que
-  // for enviado; nome/email so mudam quando vem PREENCHIDOS; capaBase64/
-  // endereco/fotosLocal preservam o atual quando null (e fotosLocal, quando
-  // presente, SUBSTITUI todas as fotos).
+  // for enviado; nome/email so mudam quando vem PREENCHIDOS; logoBase64/
+  // capaBase64/endereco/fotosLocal preservam o atual quando null (e fotosLocal,
+  // quando presente, SUBSTITUI todas as fotos).
   //
   // O e-mail e opcional aqui de proposito: o GET do perfil NAO o devolve
   // (privacidade), entao esta tela nunca o conhece. Mandar vazio fazia o
@@ -88,6 +88,7 @@ class OngService {
     required String telefone,
     required String cidade,
     required String descricao,
+    String? logoBase64,
     String? capaBase64,
     String? endereco,
     double? latitude,
@@ -105,6 +106,7 @@ class OngService {
         'telefone': telefone,
         'cidade': cidade,
         'descricao': descricao,
+        if (logoBase64 != null) 'logoBase64': logoBase64,
         if (capaBase64 != null) 'capaBase64': capaBase64,
         if (endereco != null) 'endereco': endereco,
         // Coordenadas so vao quando ambas presentes (endereco confirmado no
