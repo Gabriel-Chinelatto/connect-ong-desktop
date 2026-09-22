@@ -34,6 +34,7 @@ class OngService {
     required String cidade,
     required String descricao,
     required String senha,
+    required bool aceiteTermos,
     String cnpj = '',
   }) async {
     final response = await ApiService.rede.post(
@@ -47,6 +48,8 @@ class OngService {
         'descricao': descricao,
         'cnpj': cnpj,
         'senha': senha,
+        // LGPD: a API grava o aceite (versão dos termos, data e IP).
+        'aceiteTermos': aceiteTermos,
       }),
     ).timeout(ApiService.timeout);
 

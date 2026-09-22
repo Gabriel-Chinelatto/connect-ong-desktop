@@ -38,6 +38,7 @@ import 'sobre_projeto_screen.dart';
 import 'mural_impacto_screen.dart';
 import 'ranking_transparencia_screen.dart';
 import 'conquistas_screen.dart';
+import 'indicadores_screen.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../utils/categorias.dart';
@@ -45,6 +46,7 @@ import '../../config/config_controller.dart';
 import '../../widgets/notificacao_bell.dart';
 import '../../widgets/feedback/app_snackbar.dart';
 import '../../widgets/feedback/empty_state.dart';
+import '../../utils/validadores.dart';
 
 const Color _verde = AppColors.primary;
 
@@ -781,9 +783,17 @@ class _PainelConteudoState extends State<_PainelConteudo> {
                   case 4:
                     _gerarRelatorioPdf();
                     break;
+                  case 5:
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                IndicadoresScreen(ongId: widget.ong.id)));
+                    break;
                 }
               },
               itemBuilder: (_) => [
+                _menuItem(5, Icons.query_stats, 'Indicadores e resultados'),
                 _menuItem(0, Icons.leaderboard_outlined,
                     'Ranking de transparência'),
                 _menuItem(1, Icons.info_outline, 'Como pontuar'),
@@ -2310,7 +2320,7 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
                     final t = (v ?? '').trim();
                     if (t.isEmpty) return 'Informe o título';
                     if (t.length < 3) return 'O título precisa de ao menos 3 letras';
-                    return null;
+                    return Validadores.textoLegivel(t);
                   },
                 ),
                 const SizedBox(height: 12),
@@ -2321,7 +2331,7 @@ class _FormNecessidadeState extends State<_FormNecessidade> {
                   maxLength: 2000, // igual ao backend
                   validator: (v) => (v == null || v.trim().isEmpty)
                       ? 'Informe a descrição'
-                      : null,
+                      : Validadores.textoLegivel(v),
                 ),
                 // Redação assistida por IA: transforma o rascunho num texto
                 // claro e convincente para os doadores.
@@ -2484,7 +2494,7 @@ class _FormCampanhaState extends State<_FormCampanha> {
                   decoration: const InputDecoration(labelText: 'Título'),
                   validator: (v) => (v == null || v.trim().length < 3)
                       ? 'Mínimo 3 caracteres'
-                      : null,
+                      : Validadores.textoLegivel(v),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -2497,7 +2507,7 @@ class _FormCampanhaState extends State<_FormCampanha> {
                   decoration: const InputDecoration(labelText: 'Descrição'),
                   validator: (v) => (v == null || v.trim().isEmpty)
                       ? 'Informe a descrição'
-                      : null,
+                      : Validadores.textoLegivel(v),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -2513,6 +2523,8 @@ class _FormCampanhaState extends State<_FormCampanha> {
                     final n = double.tryParse(
                         (v ?? '').replaceAll(',', '.'));
                     if (n == null || n <= 0) return 'Informe uma meta válida';
+                    // Mesmo teto da API (CampanhaRequestDTO).
+                    if (n > 10000000) return 'A meta máxima é R\$ 10 milhões';
                     return null;
                   },
                 ),

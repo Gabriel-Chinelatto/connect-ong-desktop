@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../services/api_service.dart';
 import '../../services/geocoding_service.dart';
@@ -16,6 +16,7 @@ import '../../widgets/visualizador_imagem.dart';
 import '../../widgets/feedback/app_snackbar.dart';
 import '../../widgets/feedback/empty_state.dart';
 import 'sobre_com_ia_dialog.dart';
+import '../../utils/validadores.dart';
 
 /// Edicao do perfil PUBLICO da ONG: dados basicos + capa, endereco completo
 /// e fotos do local (ate 5). Tudo salvo via PUT /ongs/{id}.
@@ -254,9 +255,27 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
     }
   }
 
+  // Erros por campo (F-02), com as MESMAS regras que a API confere.
+  Map<TextEditingController, String?> _erros = {};
+
   Future<bool> _salvar() async {
-    if (_nome.text.trim().isEmpty) {
-      AppSnackbar.erro(context, 'O nome da ONG não pode ficar vazio.');
+    final erros = <TextEditingController, String?>{
+      _nome: Validadores.todas(_nome.text, [
+        (v) => Validadores.obrigatorio(v, 'O nome da ONG'),
+        Validadores.textoLegivel,
+      ]),
+      _telefone: Validadores.telefone(_telefone.text),
+      _descricao: Validadores.textoLegivel(_descricao.text),
+    };
+    setState(() => _erros = erros);
+    if (erros.values.any((e) => e != null)) {
+      AppSnackbar.erro(context, 'Confira os campos destacados.');
+      return false;
+    }
+    // O endereço é um autocomplete à parte: o erro vai na mensagem.
+    final erroEndereco = Validadores.textoLegivel(_endereco.text);
+    if (erroEndereco != null) {
+      AppSnackbar.erro(context, 'Endereço: $erroEndereco');
       return false;
     }
     if (_salvando) return false;
@@ -355,7 +374,9 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
                         const SizedBox(height: AppSpacing.lg),
                         // Limites iguais aos do backend (OngUpdateDTO).
                         _campo(_nome, 'Nome da ONG', maxLength: 100),
-                        _campo(_telefone, 'Telefone', maxLength: 20),
+                        _campo(_telefone, 'Telefone',
+                            maxLength: 15,
+                            formatadores: [TelefoneInputFormatter()]),
                         // Estado antes da cidade: a UF filtra o autocomplete
                         // (mesmo padrão do app mobile).
                         SeletorEstadoCidade(
@@ -436,20 +457,27 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
   /// salvar, com um erro genérico — agora o próprio campo impede e mostra o
   /// contador quando está chegando perto do limite.
   Widget _campo(TextEditingController c, String label,
-      {int linhas = 1, int? maxLength}) {
+      {int linhas = 1,
+      int? maxLength,
+      List<TextInputFormatter>? formatadores}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: TextField(
         controller: c,
         maxLines: linhas,
         maxLength: maxLength,
+        inputFormatters: formatadores,
         buildCounter: (context,
                 {required currentLength, required isFocused, maxLength}) =>
             (maxLength != null && currentLength > maxLength * 0.8)
                 ? Text('$currentLength/$maxLength',
                     style: Theme.of(context).textTheme.bodySmall)
                 : null,
-        decoration: InputDecoration(labelText: label),
+        decoration: InputDecoration(
+          labelText: label,
+          errorText: _erros[c],
+          errorMaxLines: 2,
+        ),
       ),
     );
   }

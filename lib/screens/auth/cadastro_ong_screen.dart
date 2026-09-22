@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../services/api_service.dart';
 import '../../services/ong_service.dart';
@@ -8,6 +9,7 @@ import '../../utils/estado_cidade.dart';
 import '../../widgets/confirmar_saida.dart';
 import '../../widgets/seletor_estado_cidade.dart';
 import '../legal/documentos_legais_screen.dart';
+import '../../utils/validadores.dart';
 
 /// Cadastro de uma nova ONG na plataforma.
 ///
@@ -98,6 +100,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
         descricao: _descricao.text.trim(),
         cnpj: _cnpj.text.trim(),
         senha: _senha.text,
+        aceiteTermos: _aceitouTermos,
       );
       if (!mounted) return;
       _cadastrou = true; // sucesso: sair sem perguntar
@@ -158,7 +161,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
                         final t = (v ?? '').trim();
                         if (t.isEmpty) return 'Campo obrigatório';
                         if (t.length < 2) return 'Nome muito curto';
-                        return null;
+                        return Validadores.textoLegivel(t);
                       }),
                   _campo(_email, 'E-mail',
                       obrigatorio: true,
@@ -166,8 +169,10 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
                       teclado: TextInputType.emailAddress,
                       validador: _validarEmail),
                   _campo(_telefone, 'Telefone',
-                      maxLength: 20,
-                      teclado: TextInputType.phone),
+                      maxLength: 15,
+                      teclado: TextInputType.phone,
+                      formatadores: [TelefoneInputFormatter()],
+                      validador: Validadores.telefone),
                   // Estado antes da cidade: a UF filtra o autocomplete
                   // (mesmo padrão do app mobile).
                   SeletorEstadoCidade(
@@ -177,8 +182,13 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
                     habilitado: !_enviando,
                   ),
                   _campo(_cnpj, 'CNPJ (opcional, para verificação)',
-                      maxLength: 20),
-                  _campo(_descricao, 'Descrição', linhas: 3, maxLength: 1000),
+                      maxLength: 18,
+                      formatadores: [CnpjInputFormatter()],
+                      validador: Validadores.cnpj),
+                  _campo(_descricao, 'Descrição',
+                      linhas: 3,
+                      maxLength: 1000,
+                      validador: Validadores.textoLegivel),
                   _campo(_senha, 'Senha',
                       obrigatorio: true,
                       senha: true,
@@ -279,13 +289,8 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
     return null;
   }
 
-  // Senha minima de 6 caracteres.
-  String? _validarSenha(String? v) {
-    final texto = v ?? '';
-    if (texto.isEmpty) return 'Campo obrigatório';
-    if (texto.length < 6) return 'Mínimo de 6 caracteres';
-    return null;
-  }
+  // Mesma regra de senha forte da API (8+, letras e números).
+  String? _validarSenha(String? v) => Validadores.senhaForte(v);
 
   Widget _campo(
     TextEditingController c,
@@ -296,6 +301,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
     TextInputType? teclado,
     String? Function(String?)? validador,
     int? maxLength,
+    List<TextInputFormatter>? formatadores,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -304,6 +310,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
         obscureText: senha,
         maxLines: senha ? 1 : linhas,
         keyboardType: teclado,
+        inputFormatters: formatadores,
         // Espelha o limite do backend (OngRegistroDTO), para o erro aparecer
         // enquanto se digita e nao so ao enviar o cadastro.
         maxLength: maxLength,
@@ -313,7 +320,7 @@ class _CadastroOngScreenState extends State<CadastroOngScreen> {
                 ? Text('$currentLength/$maxLength',
                     style: Theme.of(context).textTheme.bodySmall)
                 : null,
-        decoration: InputDecoration(labelText: label),
+        decoration: InputDecoration(labelText: label, errorMaxLines: 2),
         validator: validador ??
             (obrigatorio
                 ? (v) => (v == null || v.trim().isEmpty)

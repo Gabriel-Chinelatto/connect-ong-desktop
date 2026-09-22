@@ -84,57 +84,82 @@ class _DocumentoConteudo {
   const _DocumentoConteudo(this.titulo, this.atualizacao, this.secoes);
 }
 
+// Versão 2026-09-22: a MESMA gravada no aceite (Consentimento.VERSAO_ATUAL na
+// API) e a do app do doador. Se o texto mudar, suba as três.
 const _DocumentoConteudo _politicaPrivacidade = _DocumentoConteudo(
-  'Politica de Privacidade',
-  'Junho de 2026',
+  'Política de Privacidade',
+  'Setembro de 2026 (versão 2026-09-22)',
   [
     _SecaoLegal(
       '1. Quem somos',
-      'O Connect ONG e uma plataforma que conecta doadores a organizacoes nao '
-          'governamentais (ONGs), facilitando doacoes de itens e financeiras. '
-          'Esta politica explica como tratamos seus dados pessoais, em '
-          'conformidade com a Lei Geral de Protecao de Dados (LGPD - Lei '
-          '13.709/2018).',
+      'O Connect ONG é uma plataforma que conecta doadores a organizações não '
+          'governamentais (ONGs), facilitando doações de itens e financeiras. '
+          'Esta política explica como tratamos dados pessoais, em conformidade '
+          'com a Lei Geral de Proteção de Dados (LGPD — Lei 13.709/2018). O '
+          'projeto é desenvolvido por estudantes do COTIL/UNICAMP; enquanto não '
+          'houver uma pessoa jurídica operando a plataforma, a equipe do '
+          'projeto responde como controladora e encarregada dos dados.',
     ),
     _SecaoLegal(
       '2. Dados que coletamos',
-      'Coletamos os dados que a ONG nos fornece ao criar a conta e usar a '
-          'plataforma: nome da organizacao, e-mail, telefone, cidade, CNPJ '
-          '(opcional) e descricao, alem das necessidades, mensagens e '
-          'interacoes realizadas. A senha e armazenada de forma criptografada '
-          'e nunca em texto puro.',
+      'Da ONG: nome, e-mail, telefone, cidade, endereço, CNPJ (opcional), '
+          'descrição, logo e fotos — dados institucionais, exibidos aos '
+          'doadores. Da conta de acesso: e-mail e senha (guardada só como um '
+          'resumo irreversível, BCrypt). Do uso: necessidades, campanhas, '
+          'mensagens do chat, prestações de contas e avaliações. Segurança: '
+          'registro de acessos (data e IP). Consentimento: a versão dos Termos '
+          'e desta Política aceita no cadastro, com data e IP.',
     ),
     _SecaoLegal(
-      '3. Para que usamos os dados',
-      'Usamos os dados para autenticar o acesso, exibir o perfil da ONG aos '
-          'doadores, viabilizar o contato e as doacoes, enviar notificacoes '
-          'autorizadas e melhorar a plataforma. Nao vendemos dados pessoais a '
-          'terceiros.',
+      '3. Por que usamos (bases legais)',
+      'Para executar o serviço — publicar necessidades, receber interesses, '
+          'conversar com doadores e prestar contas (LGPD, art. 7º, V). Com '
+          'consentimento — exibir telefone e e-mail ao público (art. 7º, I). '
+          'Por legítimo interesse — prevenir fraudes e proteger a conta '
+          '(art. 7º, IX). Para cumprir a lei — o Marco Civil da Internet exige '
+          'guardar registros de acesso por 6 meses (art. 7º, II).',
     ),
     _SecaoLegal(
-      '4. Compartilhamento',
-      'Os dados de contato da ONG sao exibidos aos doadores conforme as '
-          'Configuracoes de Privacidade (exibir telefone, exibir e-mail, '
-          'perfil publico). Quando um doador demonstra interesse, a ONG recebe '
-          'os dados necessarios para concluir a doacao.',
+      '4. Dados dos doadores que a ONG recebe',
+      'Ao aceitar um interesse, a ONG passa a conversar com o doador e vê o '
+          'que ele autorizou mostrar. Esses dados devem ser usados só para '
+          'concluir a doação — não para outras finalidades, listas de contato '
+          'ou repasse a terceiros.',
     ),
     _SecaoLegal(
-      '5. Direitos (LGPD)',
-      'A ONG pode, a qualquer momento, acessar, corrigir ou solicitar a '
-          'exclusao dos seus dados, revogar consentimentos e gerenciar '
-          'preferencias na Central de Configuracoes. Para exercer esses '
-          'direitos, utilize as opcoes do sistema ou contate nossa equipe.',
+      '5. Compartilhamento',
+      'Usamos dois fornecedores fora do Brasil (art. 33): a hospedagem da API '
+          '(Render, EUA) e o provedor de inteligência artificial (Groq, EUA). '
+          'Antes de um texto ir para a IA, removemos e-mail, telefone, CPF e '
+          'CNPJ. Não vendemos dados a ninguém.',
     ),
     _SecaoLegal(
-      '6. Seguranca',
-      'Adotamos medidas tecnicas para proteger os dados, como criptografia de '
-          'senhas e autenticacao por token. Ainda assim, nenhum sistema e '
-          'totalmente imune a riscos, e recomendamos manter a senha em sigilo.',
+      '6. Por quanto tempo guardamos',
+      'Enquanto a conta existir. Ao excluir a conta, os dados pessoais da '
+          'conta de acesso são anonimizados na mesma hora e a ONG deixa de '
+          'aparecer na plataforma; o histórico de doações segue existindo sem '
+          'identificar pessoas (art. 16). Registros de acesso ficam 6 meses.',
     ),
     _SecaoLegal(
-      '7. Contato',
-      'Em caso de duvidas sobre esta politica ou sobre o tratamento dos dados, '
-          'fale com a equipe do Connect ONG pelos canais oficiais do projeto.',
+      '7. Direitos (LGPD, art. 18)',
+      'Acessar e levar os dados: Configurações › Privacidade e meus dados '
+          '(mostra tudo e salva em JSON). Corrigir: Editar perfil da ONG. '
+          'Excluir: Configurações › Zona de perigo. Revogar um consentimento: '
+          'desligue a opção em Privacidade.',
+    ),
+    _SecaoLegal(
+      '8. Segurança',
+      'Telefones de pessoas, mensagens do chat e denúncias são guardados '
+          'criptografados (AES-256-GCM). Senhas ficam em BCrypt e códigos de '
+          'verificação em HMAC. A comunicação é por HTTPS, cada tela só mostra '
+          'os dados do próprio dono e há limite de tentativas contra quem tenta '
+          'adivinhar senhas. Mantenha a senha em sigilo e ative a verificação '
+          'em duas etapas.',
+    ),
+    _SecaoLegal(
+      '9. Contato',
+      'Dúvidas sobre esta política ou pedidos sobre os dados: fale com a '
+          'equipe do Connect ONG pelos canais oficiais do projeto.',
     ),
   ],
 );

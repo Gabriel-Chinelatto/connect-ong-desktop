@@ -14,6 +14,7 @@ import '../../utils/imagens.dart';
 import '../../widgets/confirmar_saida.dart';
 import '../../widgets/visualizador_imagem.dart';
 import '../../widgets/feedback/empty_state.dart';
+import '../../utils/validadores.dart';
 
 const Color _verde = AppColors.primary;
 
@@ -133,7 +134,7 @@ class _FormPrestacaoState extends State<FormPrestacao> {
                       labelText: 'Título', counterText: ''),
                   validator: (v) => (v == null || v.trim().isEmpty)
                       ? 'Informe o título'
-                      : null,
+                      : Validadores.textoLegivel(v),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
@@ -145,7 +146,7 @@ class _FormPrestacaoState extends State<FormPrestacao> {
                       counterText: ''),
                   validator: (v) => (v == null || v.trim().isEmpty)
                       ? 'Descreva o que foi feito com a doação'
-                      : null,
+                      : Validadores.textoLegivel(v),
                 ),
                 const SizedBox(height: 12),
                 TextFormField(

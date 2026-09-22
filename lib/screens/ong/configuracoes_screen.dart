@@ -13,6 +13,8 @@ import '../../widgets/feedback/app_snackbar.dart';
 import '../auth/login_screen.dart';
 import '../legal/documentos_legais_screen.dart';
 import 'doadores_bloqueados_screen.dart';
+import '../../utils/validadores.dart';
+import 'meus_dados_screen.dart';
 
 /// Central de configurações da ONG.
 ///
@@ -205,6 +207,23 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _abrirDocumento(DocumentoLegal.termos),
                   ),
+                  // LGPD (F-04): ver e salvar os próprios dados.
+                  ListTile(
+                    leading: const Icon(Icons.manage_accounts_outlined),
+                    title: const Text('Privacidade e meus dados'),
+                    subtitle: const Text(
+                        'Veja e salve tudo o que guardamos sobre a conta (LGPD)'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      final id = ConfigController.instance.usuarioId;
+                      if (id == null) return;
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => MeusDadosScreen(usuarioId: id)),
+                      );
+                    },
+                  ),
                 ]),
                 _cartaoSecao('Modo Feira', Icons.celebration_outlined, [
                   SwitchListTile(
@@ -245,7 +264,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                           color: AppColors.error, fontWeight: FontWeight.w600),
                     ),
                     subtitle: const Text(
-                        'Desativa a conta da ONG e a remove da plataforma'),
+                        'Desativa a conta, remove a ONG e anonimiza os dados pessoais'),
                     trailing: _excluindoConta
                         ? const SizedBox(
                             width: 22,
@@ -654,7 +673,7 @@ class _ConfiguracoesScreenState extends State<ConfiguracoesScreen> {
                 obscureText: true,
                 decoration: const InputDecoration(labelText: 'Nova senha'),
                 validator: (v) =>
-                    (v == null || v.length < 4) ? 'Mínimo 4 caracteres' : null,
+                    Validadores.senhaForte(v), // mesma regra da API
               ),
             ],
           ),

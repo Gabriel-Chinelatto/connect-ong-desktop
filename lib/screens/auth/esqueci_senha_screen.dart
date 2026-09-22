@@ -6,6 +6,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/app_radius.dart';
 import '../../theme/app_spacing.dart';
 import '../../widgets/feedback/app_snackbar.dart';
+import '../../utils/validadores.dart';
 
 /// Fluxo "Esqueci a senha" em dois passos:
 ///
@@ -259,7 +260,7 @@ class _EsqueciSenhaScreenState extends State<EsqueciSenhaScreen> {
             ),
           ),
           validator: (v) =>
-              (v == null || v.length < 6) ? 'Mínimo de 6 caracteres' : null,
+              Validadores.senhaForte(v), // mesma regra da API
         ),
         const SizedBox(height: AppSpacing.md),
         TextFormField(
