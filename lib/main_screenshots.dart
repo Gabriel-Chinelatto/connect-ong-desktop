@@ -18,6 +18,8 @@
 //   sobre         -> "Sobre o projeto" + changelog (Versoes). Use ?dark=1 p/ escuro
 //   cadastro      -> cadastro de ONG (dropdown UF + autocomplete de cidade)
 //   editar-ong    -> edicao do perfil da ONG (UF/cidade por selecao)
+//   indicadores   -> Indicadores e resultados (Plano de Acao, F-08)
+//   meus-dados    -> Privacidade e meus dados (Plano de Acao, F-04)
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -27,12 +29,17 @@ import 'screens/ong/chat_ong_screen.dart';
 import 'screens/ong/configuracoes_screen.dart';
 import 'screens/ong/doadores_bloqueados_screen.dart';
 import 'screens/ong/editar_ong_screen.dart';
+import 'screens/ong/indicadores_screen.dart';
+import 'screens/ong/meus_dados_screen.dart';
 import 'screens/ong/painel_ong_screen.dart';
 import 'screens/ong/perfil_publico_doador_screen.dart';
 import 'screens/ong/perfil_publico_ong_screen.dart';
 import 'screens/ong/sobre_projeto_screen.dart';
 import 'services/api_service.dart';
 import 'theme/app_theme.dart';
+
+int _ongId = 33;
+int _usuarioId = 0;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,6 +55,9 @@ Future<void> main() async {
   );
   final dados = jsonDecode(resp.body) as Map<String, dynamic>;
   await ApiService.setToken(dados['accessToken'] as String?);
+  // ids do LOGIN (e nao fixos): o harness funciona no banco da escola e no H2 local.
+  _ongId = (dados['ongId'] as num?)?.toInt() ?? 33;
+  _usuarioId = (dados['id'] as num?)?.toInt() ?? 0;
 
   final tela = Uri.base.fragment.isEmpty ? 'painel' : Uri.base.fragment;
   // ?dark=1 força o tema escuro (para conferir legibilidade no modo escuro).
@@ -99,7 +109,11 @@ class _HarnessApp extends StatelessWidget {
       case 'cadastro':
         return const CadastroOngScreen();
       case 'editar-ong':
-        return const EditarOngScreen(ongId: 33);
+        return EditarOngScreen(ongId: _ongId);
+      case 'indicadores':
+        return IndicadoresScreen(ongId: _ongId);
+      case 'meus-dados':
+        return MeusDadosScreen(usuarioId: _usuarioId);
       case 'painel':
       default:
         return const PainelOngScreen(

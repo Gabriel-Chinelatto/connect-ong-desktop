@@ -25,12 +25,25 @@ class VersaoApp {
   });
 }
 
-/// Versões da mais recente (topo) para a mais antiga. A v1.7 é a atual.
+/// Versões da mais recente (topo) para a mais antiga. A 2.0 é a atual.
 const List<VersaoApp> kVersoes = [
+  VersaoApp(
+    versao: '2.0',
+    titulo: 'Plano de Ação pós-FECITEC',
+    atual: true,
+    mudancas: [
+      'Indicadores e resultados: funil, taxa de atendimento, tempo de resposta, '
+          'categorias e mês a mês — da sua ONG e da plataforma',
+      'Campos validados de verdade: CNPJ com dígito verificador, telefone com '
+          'DDD, senha forte — na tela e no servidor',
+      'Mensagens do chat e telefones de pessoas criptografados no banco',
+      '"Privacidade e meus dados": veja e salve em arquivo tudo o que guardamos (LGPD)',
+      'Política de Privacidade reescrita, com bases legais e prazos',
+    ],
+  ),
   VersaoApp(
     versao: '1.9',
     titulo: 'Frete inteligente e mais IA',
-    atual: true,
     mudancas: [
       'Escrever com IA no perfil: a partir de um rascunho, a IA sugere o texto '
           '"Sobre" da ONG e você vai ajustando (mais curto, mencionar X...) até ficar do seu jeito',

@@ -72,28 +72,6 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Indicadores e resultados'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(
-                    value: false,
-                    label: Text('Minha ONG'),
-                    icon: Icon(Icons.storefront_outlined)),
-                ButtonSegment(
-                    value: true,
-                    label: Text('Plataforma'),
-                    icon: Icon(Icons.public)),
-              ],
-              selected: {_plataforma},
-              onSelectionChanged: (s) {
-                setState(() => _plataforma = s.first);
-                _carregar();
-              },
-            ),
-          ),
-        ],
       ),
       body: _erro != null
           ? Center(
@@ -118,6 +96,10 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        Align(
+            alignment: Alignment.centerLeft,
+            child: SizedBox(width: 400, child: _seletor())),
+        const SizedBox(height: 16),
         Wrap(spacing: 12, runSpacing: 12, children: [
           _kpi('Necessidades publicadas', '${_n(f['necessidades'])}',
               Icons.campaign_outlined),
@@ -188,10 +170,29 @@ class _IndicadoresScreenState extends State<IndicadoresScreen> {
     );
   }
 
+  Widget _seletor() => SegmentedButton<bool>(
+        segments: const [
+          ButtonSegment(
+              value: false,
+              label: Text('Minha ONG'),
+              icon: Icon(Icons.storefront_outlined)),
+          ButtonSegment(
+              value: true,
+              label: Text('Toda a plataforma'),
+              icon: Icon(Icons.public)),
+        ],
+        selected: {_plataforma},
+        onSelectionChanged: (s) {
+          setState(() => _plataforma = s.first);
+          _carregar();
+        },
+      );
+
   Widget _kpi(String titulo, String valor, IconData icone, {String? dica}) {
     final cs = Theme.of(context).colorScheme;
     final card = Container(
       width: 210,
+      height: 150,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
