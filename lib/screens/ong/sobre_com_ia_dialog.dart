@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../services/ia_service.dart';
@@ -114,7 +116,14 @@ class _SobreComIaDialogState extends State<_SobreComIaDialog> {
             ),
         ],
       ),
-      content: SizedBox(width: 460, child: _corpo(cs)),
+      // Telas menores (o notebook do professor / projetor): o dialogo tinha
+      // largura fixa de 460 e conteudo sem rolagem — a sugestao longa empurrava
+      // os botoes "Sim, usar este texto"/"Nao, ajustar" para fora da tela e a
+      // ONG nunca conseguia adotar o texto (nem chegar ao Salvar).
+      content: SizedBox(
+        width: math.min(460.0, MediaQuery.of(context).size.width - 96),
+        child: SingleChildScrollView(child: _corpo(cs)),
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),

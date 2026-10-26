@@ -446,8 +446,22 @@ class _EditarOngScreenState extends State<EditarOngScreen> {
       rascunhoAtual: _descricao.text.trim(),
     );
     if (!mounted || texto == null || texto.isEmpty) return;
-    setState(() => _descricao.text = texto);
+    // O campo tem maxLength 1000, mas isso só limita a DIGITAÇÃO — texto posto
+    // por código passa direto e o PUT voltava 400 do backend. Cortamos aqui, na
+    // última frase completa, para o Salvar nunca falhar por tamanho.
+    final adotado = _limitar(texto, 1000);
+    setState(() => _descricao.text = adotado);
     AppSnackbar.sucesso(context, 'Sobre atualizado. Não esqueça de Salvar.');
+  }
+
+  /// Corta [texto] em no máximo [max] caracteres, preferindo terminar numa
+  /// frase completa (o mesmo limite que o backend valida em OngUpdateDTO).
+  String _limitar(String texto, int max) {
+    if (texto.length <= max) return texto;
+    final corte = texto.substring(0, max);
+    final fim = [corte.lastIndexOf('.'), corte.lastIndexOf('!'), corte.lastIndexOf('?')]
+        .reduce((a, b) => a > b ? a : b);
+    return (fim > max ~/ 2 ? corte.substring(0, fim + 1) : corte).trim();
   }
 
   /// Campo de texto do formulário.
